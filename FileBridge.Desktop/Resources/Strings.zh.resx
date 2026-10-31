@@ -432,4 +432,10 @@
   <data name="Core.ReceiverProfileBusy" xml:space="preserve">
     <value>另一个窗口正在使用接收配置，请先停止该窗口的接收。</value>
   </data>
+  <data name="SupportFileBridge" xml:space="preserve">
+    <value>支持 FileBridge</value>
+  </data>
+  <data name="SupportFileBridgeHint" xml:space="preserve">
+    <value>自愿打赏，通过浏览器打开 Stripe。</value>
+  </data>
 </root>

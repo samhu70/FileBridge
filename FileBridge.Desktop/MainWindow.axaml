@@ -118,6 +118,10 @@
         </TabItem>
       </TabControl>
     </Border>
-    <Grid Grid.Row="2" ColumnDefinitions="*,Auto"><TextBlock x:Name="AppMessage" Text="{DynamicResource Text.Ready}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="790" HorizontalAlignment="Left" /><TextBlock Grid.Column="1" x:Name="VersionLabel" Classes="muted" FontSize="12" /></Grid>
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14">
+      <TextBlock x:Name="AppMessage" Text="{DynamicResource Text.Ready}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="790" HorizontalAlignment="Left" VerticalAlignment="Center" />
+      <HyperlinkButton Grid.Column="1" x:Name="SupportButton" Content="{DynamicResource Text.SupportFileBridge}" NavigateUri="https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00" ToolTip.Tip="{DynamicResource Text.SupportFileBridgeHint}" FontSize="12" Padding="4,2" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" x:Name="VersionLabel" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+    </Grid>
   </Grid>
 </Window>

@@ -432,4 +432,10 @@
   <data name="Core.ReceiverProfileBusy" xml:space="preserve">
     <value>Another window is using the receiver settings. Stop receiving in that window first.</value>
   </data>
+  <data name="SupportFileBridge" xml:space="preserve">
+    <value>Support FileBridge</value>
+  </data>
+  <data name="SupportFileBridgeHint" xml:space="preserve">
+    <value>Optional tip — opens Stripe in your browser.</value>
+  </data>
 </root>

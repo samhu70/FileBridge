@@ -11,15 +11,19 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.0 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.0/FileBridge-windows-x64-2.5.0-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.0 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.0/FileBridge-macOS-arm64-2.5.0-framework-dependent.zip) |
-| SHA-256 | 2.5.0 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.0/SHA256SUMS-2.5.0.txt) |
+| Windows x64 | 2.5.1 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.1/FileBridge-windows-x64-2.5.1-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.1 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.1/FileBridge-macOS-arm64-2.5.1-framework-dependent.zip) |
+| SHA-256 | 2.5.1 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.1/SHA256SUMS-2.5.1.txt) |
 
-**2.5.0 新增长期连接码**：身份不会按天到期或自动轮换；TLS 证书续签不改变长期码。只有用户手动重新创建时才更换身份。发布包由 `v2.5.0` 标签对应源码构建。
+**2.5.1 新增支持开发入口**：软件窗口底部和本页均提供自愿打赏链接，中英文界面同步切换。发布包由 `v2.5.1` 标签对应源码构建。
 
-**2.5.0 introduces long-lived connection codes.** Identity no longer rotates on a schedule, and TLS certificate renewal does not change a long-lived code. Only manual recreation changes identity. Downloads are built from `v2.5.0`.
+**2.5.1 adds an optional support link** in the app footer and this README, with Chinese and English text. Downloads are built from `v2.5.1`.
 
 ## 中文
+
+### 支持开发
+
+如果 FileBridge 对你有帮助，欢迎[通过 Stripe 自愿打赏](https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00)，支持持续开发与维护。一次性打赏，以澳元计价，建议 A$5，金额可自行修改。软件窗口底部也提供「支持 FileBridge」入口。
 
 ### 软件功能
 
@@ -89,6 +93,10 @@ dotnet run --project FileBridge.Desktop -c Release
 本仓库公开，便于浏览源码和直接下载 Release。公开可读不等于公开可写：访客可以下载、Fork 或提交 Pull Request，但不能直接推送或合并到本仓库；写权限仅授予仓库所有者及其明确授权的协作者。当前未添加协作者。
 
 ## English
+
+### Support development
+
+If FileBridge is useful to you, you can [leave an optional tip through Stripe](https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00) to support ongoing development and maintenance. Tips are one-time payments in AUD, with a suggested A$5 that you can change. You can also select **Support FileBridge** at the bottom of the app window.
 
 ### Features
 
