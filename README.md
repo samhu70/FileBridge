@@ -11,12 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.4.0 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.4.0/FileBridge-windows-x64-2.4.0-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.4.0 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.4.0/FileBridge-macOS-arm64-2.4.0-framework-dependent.zip) |
-| SHA-256 | 2.4.0 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.4.0/SHA256SUMS-2.4.0.txt) |
+| Windows x64 | 2.5.0 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.0/FileBridge-windows-x64-2.5.0-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.0 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.0/FileBridge-macOS-arm64-2.5.0-framework-dependent.zip) |
+| SHA-256 | 2.5.0 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.0/SHA256SUMS-2.5.0.txt) |
 
-**2.4.0 新增两端连接信息持久化、手动更换连接码和按文件大小适配并发**。发布包由 `v2.4.0` 标签对应的源码构建，免安装、解压运行。
-**2.4.0 adds saved connection details on both ends, manual code replacement and file-size-aware stream limits.** Downloads are built from the source tagged `v2.4.0`. Extract the archives to run the app.
+**2.5.0 新增长期连接码**：身份不会按天到期或自动轮换；TLS 证书续签不改变长期码。只有用户手动重新创建时才更换身份。发布包由 `v2.5.0` 标签对应源码构建。
+
+**2.5.0 introduces long-lived connection codes.** Identity no longer rotates on a schedule, and TLS certificate renewal does not change a long-lived code. Only manual recreation changes identity. Downloads are built from `v2.5.0`.
 
 ## 中文
 
@@ -29,7 +30,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 - **并行分块**：发送端可选 1–10 路上限，默认 4 路。文件不超过 4 MiB 时自动单路；更大文件按分块数、用户上限和对端能力取较小值。例如默认上限下，6 MiB 用 2 路，20 MiB 用 4 路。
 - **完整性校验**：每块 4 MiB，分块和最终文件都校验 SHA-256；续传时也检查已有数据。
 - **同名文件保护**：不覆盖已有的不同内容文件；内容一致的成品自动跳过。
-- **HTTPS 连接**：随机令牌认证，连接码携带证书指纹，发送端验证指纹和证书有效期。
+- **HTTPS 连接**：长期码固定接收端公钥与随机令牌；TLS 证书保持有效期校验，并用同一密钥自动续签，连接码不变。
 - **双语界面**：中文 / English 即时切换并记住选择，显示收发进度、速度、当前文件剩余时间与并行状态。
 
 ### 运行要求
@@ -58,8 +59,8 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 - **发送端**：输入自动保存。点击「更换连接码」并粘贴新的接收端连接码；发送期间不能更换。
 - **接收端**：重启恢复地址、端口、保存目录和连接码，但不会自动开始监听。点击「开始接收」后沿用旧码。
 - **手动换码**：先停止接收，再点击「重新创建连接码」，然后开始接收并分享新码。旧码失效，断点数据保留。
-- **必须更新时**：地址或端口改变会更新码中的地址；证书有效期为 7 天，到期或凭据损坏后开始接收会生成新凭据并提示重新分享。
-- **首次升级**：旧版本没有保存凭据，无法恢复它生成的接收码；从 2.4.0 起生成一次后即可保留。
+- **长期使用**：地址、端口和本地凭据不变时，长期码没有日历到期时间。证书续签、停止接收或重启都不会更换公钥身份或令牌。损坏凭据会提示手动处理，不自动替换。
+- **从旧版升级**：旧 `fb2_` 码不会被自动改写，仍按旧证书有效期使用；手动重新创建一次即可得到 `fb3_` 长期码。长期码要求收发两端均升级至 2.5.0 或更新版本。没有保存过的旧凭据无法恢复。
 - 连接信息保存在当前用户的本地应用数据目录 `FileBridge/connections.json`。该文件含访问令牌和证书私钥，不要分享或上传。Unix 使用文件 `0600`、目录 `0700`；Windows 使用用户配置目录的继承权限。
 - 共用配置的其他窗口不能同时启动接收或重新创建凭据，以免旧监听仍使用已经更换的身份。
 
@@ -98,7 +99,7 @@ dotnet run --project FileBridge.Desktop -c Release
 - **Parallel chunks:** choose a limit of 1–10 streams, default 4. Files up to 4 MiB use one stream. Larger files use the minimum of their chunk count, your limit and the receiver capability. With the default limit, 6 MiB uses 2 streams and 20 MiB uses 4.
 - **SHA-256 verification** for each 4 MiB chunk, the resumed prefix and the completed file.
 - **Existing-file protection:** different contents are never overwritten; already-completed files with matching contents are skipped.
-- **HTTPS transport** with a random authentication token and an exact certificate fingerprint carried in the connection code.
+- **HTTPS transport** with a persistent public-key pin and random token. TLS certificate dates remain checked; same-key certificate renewal leaves the long-lived code unchanged.
 - **Chinese and English UI** with a saved language preference, transfer progress, speed, time remaining for the current file and negotiated parallel mode.
 
 ### Requirements
@@ -124,8 +125,8 @@ After restarting the receiver, select **Start receiving** to reuse the saved cod
 - **Sender:** input is saved automatically. Select **Change code** and paste the new receiver code. Changes are disabled during sending.
 - **Receiver:** the code, address, port and destination are restored. Restoring them does not start a listener; select **Start receiving** first.
 - **Manual recreation:** stop receiving, select **Recreate code**, then start receiving and share the new code. The old code becomes invalid; partial files are kept.
-- Address or port changes update the endpoint in the code. Certificates remain valid for 7 days. Expired or invalid credentials are renewed when receiving starts, with a prompt to share the updated code.
-- Earlier versions did not save receiver credentials. Create a code once in 2.4.0 to start using persistence.
+- Long-lived codes have no calendar expiration while their endpoint and local credentials stay the same. TLS renewal and app restarts do not rotate the public key or token. Damaged credentials require manual recreation and are never replaced silently.
+- Existing `fb2_` codes are not automatically rewritten and retain their old certificate validity. Manually recreate once to obtain a long-lived `fb3_` code. Both peers must use 2.5.0 or newer for long-lived codes. Credentials that an old version never saved cannot be recovered.
 - Details are stored in `FileBridge/connections.json` under the current user's local application data folder. This file contains access tokens and a certificate private key: do not share or upload it. Unix permissions are `0600` for the file and `0700` for its directory; Windows inherits the user profile directory permissions.
 - App instances sharing the same profile cannot receive or recreate credentials simultaneously, so a code change cannot leave another profile listener using an old identity.
 

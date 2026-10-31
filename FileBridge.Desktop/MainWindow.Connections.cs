@@ -27,7 +27,7 @@ public sealed partial class MainWindow
             if (!string.IsNullOrEmpty(saved.Directory)) ReceiveDirectory.Text = saved.Directory;
             storedIdentity = saved.Identity;
             RefreshInvitationPreview();
-            if (ReceiveCode.Text?.Length > 0 || SendCode.Text.Length > 0) Message("ConnectionsRestored");
+            if ((ReceiveCode.Text?.Length > 0 || SendCode.Text.Length > 0) && storedIdentity?.IsUsable != false) Message("ConnectionsRestored");
         }
         catch (Exception error) { ShowError(error); }
 

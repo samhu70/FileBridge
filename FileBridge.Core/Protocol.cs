@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -6,15 +7,15 @@ namespace FileBridge.Core;
 
 /// <summary>A selected local file and its safe path relative to the transfer root.</summary>
 public sealed record TransferFile(string LocalPath, string RelativeName, long Size);
-/// <summary>Authenticated peer endpoint and exact TLS certificate fingerprint.</summary>
-public sealed record Invitation(string Url, string Token, string Pin)
+/// <summary>Authenticated peer endpoint with a certificate pin (fb2) or stable public-key pin (fb3).</summary>
+public sealed record Invitation(string Url, string Token, string Pin, [property: JsonIgnore] bool PublicKeyPin = false)
 {
-    public string Encode() => "fb2_" + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(this)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    public string Encode() => (PublicKeyPin ? "fb3_" : "fb2_") + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(this)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     public static Invitation Parse(string code)
     {
         code = code.Trim();
-        if (!code.StartsWith("fb2_", StringComparison.Ordinal) || code.Length > 4096)
-            throw new InvalidDataException("请粘贴 FileBridge 桌面客户端生成的完整连接码（fb2_ 开头）。");
+        if ((!code.StartsWith("fb2_", StringComparison.Ordinal) && !code.StartsWith("fb3_", StringComparison.Ordinal)) || code.Length > 4096)
+            throw new InvalidDataException("请粘贴 FileBridge 桌面客户端生成的完整连接码（fb2_ 或 fb3_ 开头）。");
         try
         {
             var data = code[4..].Replace('-', '+').Replace('_', '/');
@@ -24,7 +25,7 @@ public sealed record Invitation(string Url, string Token, string Pin)
                 || uri.AbsolutePath != "/" || uri.Query != "" || uri.Fragment != "" || uri.UserInfo != ""
                 || !Wire.ValidHash(value.Pin) || !Wire.ValidHash(value.Token))
                 throw new InvalidDataException("连接码中的地址或认证信息无效。");
-            return value;
+            return value with { PublicKeyPin = code.StartsWith("fb3_", StringComparison.Ordinal) };
         }
         catch (Exception error) when (error is FormatException or JsonException)
         { throw new InvalidDataException("连接码不完整，请重新复制整行。", error); }
@@ -47,6 +48,8 @@ public static class Wire
     public const int MaxParallelChunks = 10;
     public const string PartsDirectory = ".filebridge-parts";
     public static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+    public static string CertificatePin(X509Certificate2 certificate, bool publicKey) =>
+        publicKey ? Hash(certificate.PublicKey.ExportSubjectPublicKeyInfo()) : Hash(certificate.RawData);
     public static bool ValidHash(string? value) => value is { Length: 64 } && value.All(Uri.IsHexDigit);
     public static bool ValidName(string? name) => name is { Length: > 0 and <= 4096 } && !name.Any(c => "\\:<>\"|?*".Contains(c))
         && !name.Any(char.IsControl) && !Path.IsPathRooted(name)

@@ -16,6 +16,7 @@ try
     if (args.Contains("--ui")) { UiChecks.Run(root); return; }
     ProtocolChecks.Run();
     await ConnectionChecks.RunAsync(root);
+    await LifetimeChecks.RunAsync(root);
     await AdaptiveStreamChecks.RunAsync(root);
     LocalizationChecks();
     ReceiveDisplayChecks();

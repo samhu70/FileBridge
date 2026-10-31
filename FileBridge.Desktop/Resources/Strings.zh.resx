@@ -199,7 +199,7 @@
     <value>请选择保存位置。</value>
   </data>
   <data name="Core.InvitationRequired" xml:space="preserve">
-    <value>请粘贴 FileBridge 桌面客户端生成的完整连接码（fb2_ 开头）。</value>
+    <value>请粘贴 FileBridge 桌面客户端生成的完整连接码（fb2_ 或 fb3_ 开头）。</value>
   </data>
   <data name="Core.InvalidInvitation" xml:space="preserve">
     <value>连接码中的地址或认证信息无效。</value>
@@ -397,7 +397,7 @@
     <value>停止接收后可重新创建；旧连接码将失效，断点数据保留。</value>
   </data>
   <data name="PersistentCodeHint" xml:space="preserve">
-    <value>连接码随重启保留；证书有效期 7 天，过期更新。停止接收后可手动重新创建，未启动时不监听。</value>
+    <value>长期连接码不会按时间更换，仅手动重新创建时轮换身份。旧版连接码需手动重建一次以启用长期使用。</value>
   </data>
   <data name="ConnectionsRestored" xml:space="preserve">
     <value>已恢复上次的连接信息；开始接收后可继续使用原连接码。</value>
@@ -406,10 +406,10 @@
     <value>无法保存连接信息：{0}</value>
   </data>
   <data name="InvitationRenewalNeeded" xml:space="preserve">
-    <value>保存的接收凭据已失效；开始接收时会更新，或手动重新创建连接码。</value>
+    <value>保存的接收凭据不可用，请手动重新创建连接码。程序不会自动更换身份。</value>
   </data>
   <data name="InvitationUpdated" xml:space="preserve">
-    <value>接收凭据已更新，请将当前连接码重新分享给发送方。</value>
+    <value>接收身份已被手动更换，请将当前连接码重新分享给发送方。</value>
   </data>
   <data name="ReceiverCodeRecreated" xml:space="preserve">
     <value>已重新创建连接码，旧码失效。开始接收后使用新码，断点数据保留。</value>
@@ -418,10 +418,10 @@
     <value>请粘贴新的接收端连接码；修改会自动保存。</value>
   </data>
   <data name="Core.InvalidSavedIdentity" xml:space="preserve">
-    <value>保存的接收凭据无效，请重新创建连接码。</value>
+    <value>保存的接收凭据无效，请手动重新创建连接码。</value>
   </data>
   <data name="Core.ExpiredIdentity" xml:space="preserve">
-    <value>接收证书已失效，请重新创建连接码。</value>
+    <value>旧版连接码的证书已过期，请手动重新创建长期连接码。</value>
   </data>
   <data name="Core.BadConnectionSettings" xml:space="preserve">
     <value>保存的连接信息损坏，请重新创建连接码。</value>

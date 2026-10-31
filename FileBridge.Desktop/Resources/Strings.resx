@@ -199,7 +199,7 @@
     <value>Choose a save location.</value>
   </data>
   <data name="Core.InvitationRequired" xml:space="preserve">
-    <value>Paste the complete connection code from FileBridge Desktop (starting with fb2_).</value>
+    <value>Paste the complete connection code from FileBridge Desktop (starting with fb2_ or fb3_).</value>
   </data>
   <data name="Core.InvalidInvitation" xml:space="preserve">
     <value>The address or authentication details in the connection code are invalid.</value>
@@ -397,7 +397,7 @@
     <value>Stop receiving before recreating the code. The old code becomes invalid; partial files are kept.</value>
   </data>
   <data name="PersistentCodeHint" xml:space="preserve">
-    <value>Codes survive restarts; certificates renew after 7 days. Stop receiving to recreate a code. No listener runs until started.</value>
+    <value>Long-lived codes do not rotate on a schedule. Only manual recreation changes identity. Recreate a legacy code once to enable this.</value>
   </data>
   <data name="ConnectionsRestored" xml:space="preserve">
     <value>Previous connection details restored. Start receiving to use the saved code.</value>
@@ -406,10 +406,10 @@
     <value>Could not save connection details: {0}</value>
   </data>
   <data name="InvitationRenewalNeeded" xml:space="preserve">
-    <value>Saved receiver credentials are no longer valid. Start receiving to renew them, or recreate the code manually.</value>
+    <value>Saved receiver credentials are unavailable. Manually recreate the code; the app will not replace its identity automatically.</value>
   </data>
   <data name="InvitationUpdated" xml:space="preserve">
-    <value>Receiver credentials were renewed. Share the current connection code with the sender.</value>
+    <value>The receiver identity was changed manually. Share the current code with the sender.</value>
   </data>
   <data name="ReceiverCodeRecreated" xml:space="preserve">
     <value>A new code was created; the old code is invalid. Start receiving to use the new code. Partial files are kept.</value>
@@ -418,10 +418,10 @@
     <value>Paste the new receiver code. Changes are saved automatically.</value>
   </data>
   <data name="Core.InvalidSavedIdentity" xml:space="preserve">
-    <value>Saved receiver credentials are invalid. Recreate the connection code.</value>
+    <value>Saved receiver credentials are invalid. Manually recreate the connection code.</value>
   </data>
   <data name="Core.ExpiredIdentity" xml:space="preserve">
-    <value>The receiver certificate is no longer valid. Recreate the connection code.</value>
+    <value>The legacy code certificate has expired. Manually recreate a long-lived connection code.</value>
   </data>
   <data name="Core.BadConnectionSettings" xml:space="preserve">
     <value>Saved connection details are damaged. Recreate the connection code.</value>

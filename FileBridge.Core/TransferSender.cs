@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Runtime.ExceptionServices;
 using System.Security.Authentication;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
@@ -41,13 +42,23 @@ public static class TransferSender
     {
         var handler = new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false,
             MaxConnectionsPerServer = Wire.MaxParallelChunks, SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13 };
-        handler.ServerCertificateCustomValidationCallback = (_, certificate, _, _) => certificate is not null
-            && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(Wire.Hash(certificate.RawData)), Encoding.ASCII.GetBytes(invite.Pin))
-            && DateTime.UtcNow >= certificate.NotBefore.ToUniversalTime() && DateTime.UtcNow <= certificate.NotAfter.ToUniversalTime();
+        handler.ServerCertificateCustomValidationCallback = (_, certificate, _, _) => CertificateMatches(invite, certificate);
         var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(5), BaseAddress = new Uri(invite.Url.TrimEnd('/') + "/") };
         client.DefaultRequestHeaders.Authorization = new("Bearer", invite.Token);
         return client;
     }
+    internal static bool CertificateMatches(Invitation invite, X509Certificate2? certificate, DateTimeOffset? time = null)
+    {
+        var now = (time ?? DateTimeOffset.UtcNow).UtcDateTime;
+        if (certificate is null || now < certificate.NotBefore.ToUniversalTime() || now >= certificate.NotAfter.ToUniversalTime()) return false;
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(Wire.CertificatePin(certificate, invite.PublicKeyPin)),
+                Encoding.ASCII.GetBytes(invite.Pin));
+        }
+        catch (Exception error) when (error is CryptographicException or NotSupportedException) { return false; }
+    }
+
     /// <summary>Send files using at most the selected number of parallel chunk requests.</summary>
     /// <param name="files">Ordered source files.</param>
     /// <param name="code">Receiver's authenticated invitation.</param>

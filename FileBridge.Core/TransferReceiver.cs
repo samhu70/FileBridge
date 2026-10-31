@@ -22,7 +22,8 @@ public sealed class TransferReceiver : IAsyncDisposable
     private TaskCompletionSource progressChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Dictionary<string, ReceiveSession> sessions = [];
     private readonly IProgress<TransferProgress>? progress;
-    private readonly X509Certificate2 certificate;
+    private readonly ReceiverCertificateCache certificates;
+    private readonly bool publicKeyPin;
     private WebApplication? app;
     private readonly string token;
     public Invitation Invitation { get; private set; } = null!;
@@ -61,7 +62,8 @@ public sealed class TransferReceiver : IAsyncDisposable
         var transientIdentity = identity is null;
         identity ??= ReceiverIdentity.Create();
         token = identity.Token;
-        try { certificate = identity.LoadCertificate(); }
+        publicKeyPin = identity.PublicKeyPin;
+        try { certificates = new ReceiverCertificateCache(identity); }
         finally { if (transientIdentity) CryptographicOperations.ZeroMemory(identity.Pfx); }
     }
 
@@ -89,7 +91,7 @@ public sealed class TransferReceiver : IAsyncDisposable
                 options.Listen(ip, port, listen =>
                 {
                     listen.Protocols = HttpProtocols.Http1;
-                    listen.UseHttps(receiver.certificate);
+                    listen.UseHttps(https => https.ServerCertificateSelector = (_, _) => receiver.certificates.GetCertificate());
                 });
             });
             var app = builder.Build();
@@ -97,7 +99,7 @@ public sealed class TransferReceiver : IAsyncDisposable
             app.Run(receiver.HandleAsync);
             await app.StartAsync(ct);
             receiver.Invitation = new Invitation(app.Urls.Single().TrimEnd('/'), receiver.token,
-                Wire.Hash(receiver.certificate.RawData));
+                Wire.CertificatePin(receiver.certificates.GetCertificate(), receiver.publicKeyPin), receiver.publicKeyPin);
             return receiver;
         }
         catch { await receiver.DisposeAsync(); throw; }
@@ -303,9 +305,9 @@ public sealed class TransferReceiver : IAsyncDisposable
         {
             using var shutdown = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             try { await current.StopAsync(shutdown.Token); }
-            finally { await current.DisposeAsync(); certificate.Dispose(); }
+            finally { await current.DisposeAsync(); certificates.Dispose(); }
         }
-        else certificate.Dispose();
+        else certificates.Dispose();
     }
 }
 

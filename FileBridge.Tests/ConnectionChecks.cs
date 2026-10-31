@@ -70,8 +70,13 @@ internal static class ConnectionChecks
 
         var expired = ReceiverIdentity.Create(DateTimeOffset.UtcNow.AddDays(-2), DateTimeOffset.UtcNow.AddDays(-1));
         File.WriteAllText(path, JsonSerializer.Serialize(saved with { Identity = expired }));
-        Check(!expired.IsUsable && store.GetIdentity() is { IsUsable: true } renewed && renewed.Token != expired.Token,
-            "expired identity was reused");
+        Check(expired.IsUsable && store.GetIdentity().Token == expired.Token, "certificate expiry changed the persistent identity");
+        var unusable = new ReceiverIdentity("invalid", [1]);
+        File.WriteAllText(path, JsonSerializer.Serialize(saved with { Identity = unusable }));
+        var damaged = File.ReadAllBytes(path);
+        try { store.GetIdentity(); throw new Exception("unusable credentials silently replaced"); }
+        catch (InvalidDataException) { }
+        Check(File.ReadAllBytes(path).SequenceEqual(damaged), "unusable credentials were overwritten without a manual action");
         File.WriteAllText(path, "invalid JSON");
         try { store.GetIdentity(); throw new Exception("corrupt profile silently accepted"); }
         catch (InvalidDataException) { }
@@ -81,7 +86,7 @@ internal static class ConnectionChecks
         Check(store.GetIdentity().Token == prior, "concurrent preferences changed identity");
         Check(identity.InvitationFor("127.0.0.1", port) != identity.InvitationFor("127.0.0.2", port), "address change did not change code");
         Check(!new ReceiverIdentity("invalid", [1]).IsUsable, "invalid identity accepted");
-        Console.WriteLine("PASS saved credentials/preferences / old code survives HTTPS restart and resume / manual rotation rejects old pin+token / expiry+corruption / permissions / stale and concurrent saves");
+        Console.WriteLine("PASS saved credentials/preferences / old code survives HTTPS restart and resume / manual rotation rejects old pin+token / no automatic identity rotation / corruption / permissions / stale and concurrent saves");
     }
 
     private static async Task<ResumeState> Begin(HttpClient client, FileManifest manifest)

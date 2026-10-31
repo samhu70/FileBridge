@@ -16,6 +16,9 @@ internal static class ProtocolChecks
         var invite = new Invitation("https://127.0.0.1:8787", new string('b', 64), new string('c', 64));
         const string code = "fb2_eyJVcmwiOiJodHRwczovLzEyNy4wLjAuMTo4Nzg3IiwiVG9rZW4iOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIiwiUGluIjoiY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjYyJ9";
         Check(invite.Encode() == code && Invitation.Parse(code) == invite, "fb2 invitation compatibility changed");
+        var permanent = invite with { PublicKeyPin = true };
+        Check(permanent.Encode() == "fb3_" + code[4..] && Invitation.Parse(permanent.Encode()) == permanent,
+            "fb3 public-key pin round trip failed");
         Check(JsonSerializer.Serialize(new ResumeState(123, "prefix", true, 4)) == """
 {"Offset":123,"Prefix":"prefix","Done":true,"ParallelChunks":4}
 """, "v2 resume fields changed");

@@ -28,8 +28,12 @@ internal sealed class ConnectionStore(string path)
 
     public ReceiverIdentity GetIdentity(bool recreate = false)
     {
-        var saved = Update(current => current.Identity?.IsUsable == true && !recreate
-            ? current : current with { Identity = ReceiverIdentity.Create() }, recover: recreate);
+        var saved = Update(current =>
+        {
+            if (recreate || current.Identity is null) return current with { Identity = ReceiverIdentity.Create() };
+            if (!current.Identity.IsUsable) throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。");
+            return current;
+        }, recover: recreate);
         return saved.Identity!;
     }
 
