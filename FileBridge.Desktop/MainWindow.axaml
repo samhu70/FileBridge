@@ -32,7 +32,8 @@
     </Grid>
     <Border Grid.Row="1" Classes="card" Padding="8,4,8,12">
       <TabControl>
-        <TabItem Header="{DynamicResource Text.SendTab}">
+        <TabItem>
+          <TabItem.Header><TextBlock Text="{DynamicResource Text.SendTab}" FontSize="16" FontWeight="SemiBold" /></TabItem.Header>
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="16,16,16,4" RowSpacing="13">
               <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
@@ -79,7 +80,8 @@
             </Grid>
           </ScrollViewer>
         </TabItem>
-        <TabItem Header="{DynamicResource Text.ReceiveTab}">
+        <TabItem>
+          <TabItem.Header><TextBlock Text="{DynamicResource Text.ReceiveTab}" FontSize="16" FontWeight="SemiBold" /></TabItem.Header>
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="16,16,16,4" RowSpacing="15">
               <Grid ColumnDefinitions="*,110" ColumnSpacing="12">

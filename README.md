@@ -19,6 +19,10 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 **2.5.1 adds an optional support link** in the app footer and this README, with Chinese and English text. Downloads are built from `v2.5.1`.
 
+**2.5.1 同版本更新（2026-11-01）**：修复英文「Send files / Receive files」页签文字显示不完整的问题，版本号保持不变。已下载旧包的用户请重新下载并替换客户端。
+
+**2.5.1 package refresh (2026-11-01):** fixed clipped **Send files / Receive files** tab labels in English. The version remains unchanged; download the refreshed package to replace an earlier copy.
+
 ## 中文
 
 ### 支持开发

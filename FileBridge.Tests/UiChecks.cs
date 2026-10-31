@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FileBridge.Core;
 using FileBridge.Desktop;
 using Microsoft.AspNetCore.Builder;
@@ -37,6 +38,46 @@ internal static class UiChecks
         Check(SynchronizationContext.Current is AvaloniaSynchronizationContext, "UI context not installed");
         T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
         void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        var tabs = window.GetVisualDescendants().OfType<TabControl>().Single();
+        var originalWidth = window.Width;
+        try
+        {
+            foreach (var language in new[] { "en", "zh", "en" })
+            {
+                var text = new Localization(Path.Combine(Root, language + ".txt"),
+                    System.Globalization.CultureInfo.GetCultureInfo(language));
+                window.Resources["Text.SendTab"] = text.Text("SendTab");
+                window.Resources["Text.ReceiveTab"] = text.Text("ReceiveTab");
+                foreach (var width in new[] { window.MinWidth, originalWidth })
+                {
+                    window.Width = width;
+                    for (var selected = 0; selected < tabs.Items.Count; selected++)
+                    {
+                        tabs.SelectedIndex = selected;
+                        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+                        foreach (var tab in tabs.Items.Cast<TabItem>())
+                        {
+                            var header = tab.GetVisualDescendants().OfType<TextBlock>().Single();
+                            var measured = new FormattedText(header.Text!, System.Globalization.CultureInfo.InvariantCulture,
+                                header.FlowDirection, new Typeface(header.FontFamily, header.FontStyle, header.FontWeight),
+                                header.FontSize, header.Foreground);
+                            Check(header.Bounds.Width + 1 >= measured.WidthIncludingTrailingWhitespace
+                                && header.Bounds.Height + 1 >= measured.Height,
+                                $"Tab header clipped: {language}, width {width}, {header.Text}, bounds {header.Bounds.Size}, text {measured.WidthIncludingTrailingWhitespace}x{measured.Height}");
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            window.Width = originalWidth;
+            tabs.SelectedIndex = 0;
+            window.Resources["Text.SendTab"] = Localization.Current.Text("SendTab");
+            window.Resources["Text.ReceiveTab"] = Localization.Current.Text("ReceiveTab");
+        }
+        Console.WriteLine("PASS UI full tab labels / English-Chinese switching / both selections / minimum and default widths");
 
         var folder = Path.Combine(Root, "selection");
         await Task.Run(() =>
