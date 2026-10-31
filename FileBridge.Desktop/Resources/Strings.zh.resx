@@ -58,7 +58,7 @@
     <value>等待选择文件</value>
   </data>
   <data name="ParallelHint" xml:space="preserve">
-    <value>发送前可选择 1–10 路并发；接收端自动匹配。暂停后可调整。</value>
+    <value>自动按文件大小适配并发：不超过 4 MiB 使用单路，其余不超过所选路数。暂停后可调整上限。</value>
   </data>
   <data name="ConnectionHelp" xml:space="preserve">
     <value>两台电脑需要处于可互通的局域网，或通过 Tailscale / VPN 连接。接收端先开始接收，再把连接码交给发送端。</value>
@@ -169,10 +169,10 @@
     <value>等待发送端连接</value>
   </data>
   <data name="ShareInvitation" xml:space="preserve">
-    <value>请复制连接码交给发送方，并保持客户端打开。</value>
+    <value>接收已启动，可沿用当前连接码。只分享给预期发送方，并保持应用开启。</value>
   </data>
   <data name="ReceiveStopped" xml:space="preserve">
-    <value>接收已停止。再次开始接收会生成新连接码，未完成文件仍可续传。</value>
+    <value>接收已停止，原连接码保留；下次可沿用或手动重新创建，断点数据保留。</value>
   </data>
   <data name="ReceiverStoppedState" xml:space="preserve">
     <value>已停止</value>
@@ -337,10 +337,10 @@
     <value> · {0} 路并行</value>
   </data>
   <data name="StreamCount" xml:space="preserve">
-    <value>并发路数</value>
+    <value>并发上限</value>
   </data>
   <data name="StreamCountHint" xml:space="preserve">
-    <value>发送前选择 1–10 路。1 路关闭并行；接收端自动匹配支持的上限。暂停后可调整。</value>
+    <value>选择 1–10 路上限。文件不超过 4 MiB 时自动单路，其余按分块数和双方上限适配。</value>
   </data>
   <data name="ReceiveMetricsHint" xml:space="preserve">
     <value>发送端连接后显示速度、预计剩余时间和并行状态。</value>
@@ -386,5 +386,50 @@
   </data>
   <data name="ScanningFiles" xml:space="preserve">
     <value>正在扫描所选文件…</value>
+  </data>
+  <data name="ChangeSenderCode" xml:space="preserve">
+    <value>更换连接码</value>
+  </data>
+  <data name="RecreateConnectionCode" xml:space="preserve">
+    <value>重新创建连接码</value>
+  </data>
+  <data name="RecreateCodeHint" xml:space="preserve">
+    <value>停止接收后可重新创建；旧连接码将失效，断点数据保留。</value>
+  </data>
+  <data name="PersistentCodeHint" xml:space="preserve">
+    <value>连接码随重启保留；证书有效期 7 天，过期更新。停止接收后可手动重新创建，未启动时不监听。</value>
+  </data>
+  <data name="ConnectionsRestored" xml:space="preserve">
+    <value>已恢复上次的连接信息；开始接收后可继续使用原连接码。</value>
+  </data>
+  <data name="ConnectionSaveFailed" xml:space="preserve">
+    <value>无法保存连接信息：{0}</value>
+  </data>
+  <data name="InvitationRenewalNeeded" xml:space="preserve">
+    <value>保存的接收凭据已失效；开始接收时会更新，或手动重新创建连接码。</value>
+  </data>
+  <data name="InvitationUpdated" xml:space="preserve">
+    <value>接收凭据已更新，请将当前连接码重新分享给发送方。</value>
+  </data>
+  <data name="ReceiverCodeRecreated" xml:space="preserve">
+    <value>已重新创建连接码，旧码失效。开始接收后使用新码，断点数据保留。</value>
+  </data>
+  <data name="ReplaceSenderCode" xml:space="preserve">
+    <value>请粘贴新的接收端连接码；修改会自动保存。</value>
+  </data>
+  <data name="Core.InvalidSavedIdentity" xml:space="preserve">
+    <value>保存的接收凭据无效，请重新创建连接码。</value>
+  </data>
+  <data name="Core.ExpiredIdentity" xml:space="preserve">
+    <value>接收证书已失效，请重新创建连接码。</value>
+  </data>
+  <data name="Core.BadConnectionSettings" xml:space="preserve">
+    <value>保存的连接信息损坏，请重新创建连接码。</value>
+  </data>
+  <data name="Core.ConnectionSettingsBusy" xml:space="preserve">
+    <value>连接信息正在被使用，请稍后重试。</value>
+  </data>
+  <data name="Core.ReceiverProfileBusy" xml:space="preserve">
+    <value>另一个窗口正在使用接收配置，请先停止该窗口的接收。</value>
   </data>
 </root>

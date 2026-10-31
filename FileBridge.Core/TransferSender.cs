@@ -73,7 +73,7 @@ public static class TransferSender
             {
                 var current = new FileInfo(source.LocalPath);
                 if (current.Length != size || current.LastWriteTimeUtc != modified) throw new IOException("源文件发生变化，请停止编辑后重新发送。");
-                try { await UploadAsync(client, source.LocalPath, m, progress, ct, parallelChunks); break; }
+                try { await UploadAsync(client, source.LocalPath, m, progress, ct, StreamsForSize(size, parallelChunks)); break; }
                 catch (Exception error) when (attempt < MaxAttempts - 1 && Retryable(error, ct))
                 {
                     progress?.Report(new(m.Name, TransferStage.Retrying, 0, m.Size, ParallelChunks: 0,
@@ -112,6 +112,9 @@ public static class TransferSender
         return await RequestAsync(client, $"v2/begin?parallelChunks={parallelChunks}" + (reset ? "&reset=1" : ""), content, ct);
     }
 
+    internal static int StreamsForSize(long size, int requested) => (int)Math.Min(requested,
+        size <= 0 ? 1 : (size - 1) / Wire.ChunkSize + 1);
+
     internal static int NegotiatedStreams(int requested, int supported) => Math.Min(requested, Math.Clamp(supported, 1, Wire.MaxParallelChunks));
 
     private static async Task UploadAsync(HttpClient client, string source, FileManifest m, IProgress<TransferProgress>? progress, CancellationToken ct, int parallelChunks)
@@ -134,7 +137,7 @@ public static class TransferSender
         {
             state = await BeginAsync(client, m, ct, parallelChunks, true);
             if (state.Offset != 0) throw new InvalidDataException("无法重置损坏的临时文件。");
-            progress?.Report(new(m.Name, TransferStage.ResendingCorrupt, 0, m.Size));
+            progress?.Report(new(m.Name, TransferStage.ResendingCorrupt, 0, m.Size, ParallelChunks: NegotiatedStreams(parallelChunks, state.ParallelChunks)));
         }
         file.Position = state.Offset;
         var offset = state.Offset;

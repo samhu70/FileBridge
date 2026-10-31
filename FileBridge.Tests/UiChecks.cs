@@ -79,7 +79,7 @@ internal static class UiChecks
         }
         Control<TextBox>("ReceiveDirectory").Text = destination;
         Click("ReceiveButton");
-        await Until(() => Control<Button>("CopyButton").IsEnabled, "receiver startup");
+        await Until(() => Control<Button>("StopReceiveButton").IsEnabled, "receiver startup");
         var originalCode = Control<TextBox>("ReceiveCode").Text;
         Control<TextBox>("SendCode").Text = originalCode;
         await window.AddPathsAsync([source]);
@@ -92,10 +92,10 @@ internal static class UiChecks
         Click("StopReceiveButton");
         await Until(() => Control<Button>("ReceiveButton").IsEnabled, "receiver shutdown");
         Click("ReceiveButton");
-        await Until(() => Control<Button>("CopyButton").IsEnabled, "receiver restart");
+        await Until(() => Control<Button>("StopReceiveButton").IsEnabled, "receiver restart");
         Check(Control<ProgressBar>("ReceiveProgress").Value == 0, "new session retained old receive progress");
-        Check(Control<TextBox>("ReceiveCode").Text != originalCode, "restart reused the invitation");
-        Console.WriteLine("PASS UI send/receive callbacks / checksum / stop and restart resets progress and invitation");
+        Check(Control<TextBox>("ReceiveCode").Text == originalCode, "restart replaced a valid saved invitation");
+        Console.WriteLine("PASS UI send/receive callbacks / checksum / stop/restart resets progress and preserves invitation");
 
         // Inject a failing host into the real receiver, without adding test hooks to production code.
         var receiver = (TransferReceiver)typeof(MainWindow).GetField("receiver", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(window)!;
@@ -116,9 +116,35 @@ internal static class UiChecks
         Check(message.Text?.Contains("simulated shutdown failure", StringComparison.Ordinal) == true
             && message.Foreground is ISolidColorBrush { Color: var color } && color == Color.Parse("#B43D37"),
             "stop success message replaced the shutdown error");
-        Check(!Control<Button>("CopyButton").IsEnabled && Control<TextBox>("ReceiveCode").Text == ""
+        Check(Control<Button>("CopyButton").IsEnabled && Control<TextBox>("ReceiveCode").Text == originalCode
             && Control<TextBox>("ReceiveAddress").IsEnabled, "failed stop left receiver controls active");
         Console.WriteLine("PASS UI shutdown exception retained / error style / controls restored");
+        Click("RecreateCodeButton");
+        await Until(() => Control<Button>("RecreateCodeButton").IsEnabled, "manual code recreation");
+        var recreated = Control<TextBox>("ReceiveCode").Text;
+        Check(!string.IsNullOrEmpty(recreated) && recreated != originalCode, "manual recreation retained old code");
+        Click("ChangeSendCodeButton");
+        Check(Control<TextBlock>("AppMessage").Text == Localization.Current.Text("ReplaceSenderCode"), "sender change entry missing");
+        Control<TextBox>("SendCode").Text = recreated;
+        window.Close();
+        var reopened = new MainWindow(Path.Combine(Root, "ui-connections", "connections.json"));
+        reopened.Show();
+        try
+        {
+            Check(reopened.FindControl<TextBox>("SendCode")!.Text == recreated, "sender code did not survive window recreation");
+            Check(reopened.FindControl<TextBox>("ReceiveCode")!.Text == recreated, "receiver code did not survive window recreation");
+            Check(reopened.FindControl<TextBox>("ReceiveDirectory")!.Text == destination, "destination did not survive restart");
+            Check(reopened.FindControl<Button>("ReceiveButton")!.IsEnabled && !reopened.FindControl<Button>("StopReceiveButton")!.IsEnabled,
+                "restoring a code silently started a listener");
+            reopened.FindControl<Button>("ReceiveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Until(() => reopened.FindControl<Button>("StopReceiveButton")!.IsEnabled, "restored receiver startup");
+            Check(reopened.FindControl<TextBox>("ReceiveCode")!.Text == recreated, "starting restored receiver changed code");
+            reopened.FindControl<Button>("StopReceiveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Until(() => reopened.FindControl<Button>("ReceiveButton")!.IsEnabled, "restored receiver shutdown");
+        }
+        finally { reopened.Close(); }
+        Console.WriteLine("PASS UI manual recreate/change / full window restart retains both codes and destination / listener stays off until started");
+
     }
 
     private static async Task Until(Func<bool> condition, string action)
@@ -153,7 +179,7 @@ public sealed class UiTestApplication : Application
     public override void OnFrameworkInitializationCompleted()
     {
         var desktop = (IClassicDesktopStyleApplicationLifetime)ApplicationLifetime!;
-        var window = new MainWindow();
+        var window = new MainWindow(Path.Combine(UiChecks.Root, "ui-connections", "connections.json"));
         desktop.MainWindow = window;
         Dispatcher.UIThread.Post(async () =>
         {

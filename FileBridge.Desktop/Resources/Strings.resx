@@ -58,7 +58,7 @@
     <value>Waiting for files</value>
   </data>
   <data name="ParallelHint" xml:space="preserve">
-    <value>Choose 1–10 streams before sending; the receiver matches automatically. Pause to adjust.</value>
+    <value>Streams adapt to file size: up to 4 MiB uses one; larger files use at most the selected limit. Pause to adjust.</value>
   </data>
   <data name="ConnectionHelp" xml:space="preserve">
     <value>Connect both computers over a reachable LAN or Tailscale / VPN. Start receiving, then share the connection code with the sender.</value>
@@ -169,10 +169,10 @@
     <value>Waiting for a sender</value>
   </data>
   <data name="ShareInvitation" xml:space="preserve">
-    <value>Copy the connection code for the sender and keep this app open.</value>
+    <value>Receiving is enabled with the current code. Share it only with the intended sender and keep the app open.</value>
   </data>
   <data name="ReceiveStopped" xml:space="preserve">
-    <value>Receiving stopped. Starting again generates a new code; partial files can still resume.</value>
+    <value>Receiving stopped. Keep using the saved code or recreate it manually. Partial files are kept.</value>
   </data>
   <data name="ReceiverStoppedState" xml:space="preserve">
     <value>Stopped</value>
@@ -337,10 +337,10 @@
     <value> · {0} parallel streams</value>
   </data>
   <data name="StreamCount" xml:space="preserve">
-    <value>Streams</value>
+    <value>Stream limit</value>
   </data>
   <data name="StreamCountHint" xml:space="preserve">
-    <value>Choose 1–10 streams before sending. 1 disables parallel transfer; the receiver automatically matches its supported limit. Pause to change.</value>
+    <value>Choose a limit of 1–10 streams. Files up to 4 MiB use one; larger files adapt to chunk count and peer limits.</value>
   </data>
   <data name="ReceiveMetricsHint" xml:space="preserve">
     <value>Speed, time remaining and parallel mode appear when a sender connects.</value>
@@ -386,5 +386,50 @@
   </data>
   <data name="ScanningFiles" xml:space="preserve">
     <value>Scanning selected files…</value>
+  </data>
+  <data name="ChangeSenderCode" xml:space="preserve">
+    <value>Change code</value>
+  </data>
+  <data name="RecreateConnectionCode" xml:space="preserve">
+    <value>Recreate code</value>
+  </data>
+  <data name="RecreateCodeHint" xml:space="preserve">
+    <value>Stop receiving before recreating the code. The old code becomes invalid; partial files are kept.</value>
+  </data>
+  <data name="PersistentCodeHint" xml:space="preserve">
+    <value>Codes survive restarts; certificates renew after 7 days. Stop receiving to recreate a code. No listener runs until started.</value>
+  </data>
+  <data name="ConnectionsRestored" xml:space="preserve">
+    <value>Previous connection details restored. Start receiving to use the saved code.</value>
+  </data>
+  <data name="ConnectionSaveFailed" xml:space="preserve">
+    <value>Could not save connection details: {0}</value>
+  </data>
+  <data name="InvitationRenewalNeeded" xml:space="preserve">
+    <value>Saved receiver credentials are no longer valid. Start receiving to renew them, or recreate the code manually.</value>
+  </data>
+  <data name="InvitationUpdated" xml:space="preserve">
+    <value>Receiver credentials were renewed. Share the current connection code with the sender.</value>
+  </data>
+  <data name="ReceiverCodeRecreated" xml:space="preserve">
+    <value>A new code was created; the old code is invalid. Start receiving to use the new code. Partial files are kept.</value>
+  </data>
+  <data name="ReplaceSenderCode" xml:space="preserve">
+    <value>Paste the new receiver code. Changes are saved automatically.</value>
+  </data>
+  <data name="Core.InvalidSavedIdentity" xml:space="preserve">
+    <value>Saved receiver credentials are invalid. Recreate the connection code.</value>
+  </data>
+  <data name="Core.ExpiredIdentity" xml:space="preserve">
+    <value>The receiver certificate is no longer valid. Recreate the connection code.</value>
+  </data>
+  <data name="Core.BadConnectionSettings" xml:space="preserve">
+    <value>Saved connection details are damaged. Recreate the connection code.</value>
+  </data>
+  <data name="Core.ConnectionSettingsBusy" xml:space="preserve">
+    <value>Connection details are in use. Try again shortly.</value>
+  </data>
+  <data name="Core.ReceiverProfileBusy" xml:space="preserve">
+    <value>Another window is using the receiver settings. Stop receiving in that window first.</value>
   </data>
 </root>

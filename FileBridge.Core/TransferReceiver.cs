@@ -24,7 +24,7 @@ public sealed class TransferReceiver : IAsyncDisposable
     private readonly IProgress<TransferProgress>? progress;
     private readonly X509Certificate2 certificate;
     private WebApplication? app;
-    private readonly string token = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
+    private readonly string token;
     public Invitation Invitation { get; private set; } = null!;
 
     private sealed class ReceiveSession(FileManifest manifest, int parallelChunks, long offset)
@@ -51,41 +51,33 @@ public sealed class TransferReceiver : IAsyncDisposable
         }
     }
 
-    private TransferReceiver(string directory, IProgress<TransferProgress>? progress)
+    private TransferReceiver(string directory, IProgress<TransferProgress>? progress, ReceiverIdentity? identity)
     {
         root = Path.GetFullPath(directory);
         this.progress = progress;
         Directory.CreateDirectory(root);
         RejectLinks(root);
         Directory.CreateDirectory(SafePath(Wire.PartsDirectory, allowParts: true));
-        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        var request = new CertificateRequest("CN=FileBridge", key, HashAlgorithmName.SHA256);
-        request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
-        request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new System.Security.Cryptography.OidCollection
-            { new("1.3.6.1.5.5.7.3.1") }, false));
-        certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(7));
-        if (OperatingSystem.IsWindows())
-        {
-            // Schannel requires an imported user key rather than CreateSelfSigned's ephemeral key.
-            using var ephemeral = certificate;
-            var pfx = ephemeral.Export(X509ContentType.Pfx);
-            try { certificate = X509CertificateLoader.LoadPkcs12(pfx, null, X509KeyStorageFlags.UserKeySet); }
-            finally { CryptographicOperations.ZeroMemory(pfx); }
-        }
+        var transientIdentity = identity is null;
+        identity ??= ReceiverIdentity.Create();
+        token = identity.Token;
+        try { certificate = identity.LoadCertificate(); }
+        finally { if (transientIdentity) CryptographicOperations.ZeroMemory(identity.Pfx); }
     }
 
-    /// <summary>Bind the selected local IP and generate a fresh authenticated invitation.</summary>
+    /// <summary>Bind the selected local IP, reusing supplied local credentials when present.</summary>
     /// <param name="address">Concrete receiver IP, normally its Tailscale address.</param>
     /// <param name="port">TCP port; zero is allowed for isolated tests.</param>
     /// <param name="directory">Trusted local directory for final and partial files.</param>
     /// <param name="progress">Optional UI progress callback.</param>
     /// <param name="ct">Startup cancellation.</param>
+    /// <param name="identity">Optional persisted local credentials; omitted callers keep fresh invitations.</param>
     public static async Task<TransferReceiver> StartAsync(string address, int port, string directory,
-        IProgress<TransferProgress>? progress = null, CancellationToken ct = default)
+        IProgress<TransferProgress>? progress = null, CancellationToken ct = default, ReceiverIdentity? identity = null)
     {
         if (!IPAddress.TryParse(address, out var ip) || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.IPv6Any)
             || port is < 0 or > 65535) throw new ArgumentException("请填写接收电脑的具体 IP 和有效端口。");
-        var receiver = new TransferReceiver(directory, progress);
+        var receiver = new TransferReceiver(directory, progress, identity);
         try
         {
             var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(TransferReceiver).Assembly.FullName });

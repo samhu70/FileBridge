@@ -15,6 +15,8 @@ try
 {
     if (args.Contains("--ui")) { UiChecks.Run(root); return; }
     ProtocolChecks.Run();
+    await ConnectionChecks.RunAsync(root);
+    await AdaptiveStreamChecks.RunAsync(root);
     LocalizationChecks();
     ReceiveDisplayChecks();
     AddressDiscovery();
@@ -308,7 +310,7 @@ async Task ParallelChunks()
     var events = new List<TransferProgress>();
     await TransferSender.SendAsync([new(source, reset.Name, bytes.Length)], receiver.Invitation.Encode(),
         new InlineProgress(p => events.Add(p)), default);
-    Check(events.Any(p => p.Stage == TransferStage.Sending && p.ParallelChunks == 4), "sender default must remain four streams");
+    Check(events.Any(p => p.Stage == TransferStage.Sending && p.ParallelChunks == 3), "three-chunk file did not adapt below the default four-stream limit");
     Check(events.Where(p => p.Stage == TransferStage.Sending).Select(p => p.Completed).SequenceEqual(
         events.Where(p => p.Stage == TransferStage.Sending).Select(p => p.Completed).Order()), "parallel progress regressed");
     Check((await File.ReadAllBytesAsync(Path.Combine(dir, reset.Name))).SequenceEqual(bytes), "parallel sender contents differ");

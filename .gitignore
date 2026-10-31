@@ -21,3 +21,8 @@ Thumbs.db
 .env
 .env.*
 .filebridge-parts/
+
+# Saved connection credentials and local coordination
+connections.json
+.receiver.lock
+.connections-*.tmp

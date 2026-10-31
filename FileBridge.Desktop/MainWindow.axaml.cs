@@ -28,8 +28,11 @@ public sealed partial class MainWindow : Window
     private bool messageIsError;
     private readonly DispatcherTimer receiveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
-    public MainWindow()
+    public MainWindow() : this(ConnectionStore.DefaultPath) { }
+
+    internal MainWindow(string settingsFile)
     {
+        connections = new ConnectionStore(settingsFile);
         InitializeComponent();
         FileList.ItemsSource = rows;
         StreamPicker.ItemsSource = Enumerable.Range(1, Wire.MaxParallelChunks).ToArray();
@@ -38,9 +41,10 @@ public sealed partial class MainWindow : Window
         ReceiveAddress.Text = detectedAddress;
         // Keep the existing folder name in every language so saved partial files remain discoverable.
         ReceiveDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileBridge 接收");
+        InitializeConnections();
         ApplyLanguage();
         receiveTimer.Tick += (_, _) => { if (receiveProgress?.Stage == TransferStage.Receiving) RenderReceive(); };
-        Closed += (_, _) => { receiveTimer.Stop(); sending?.Cancel(); if (receiver is not null) _ = receiver.DisposeAsync(); };
+        Closed += (_, _) => { receiveTimer.Stop(); sending?.Cancel(); _ = CloseReceiverAsync(); };
     }
     private string FormatBytes(long value) => TransferDisplay.Bytes(value, language.Culture);
 
@@ -248,6 +252,7 @@ public sealed partial class MainWindow : Window
     private void SetSendControls()
     {
         SendButton.IsEnabled = !busy;
+        ChangeSendCodeButton.IsEnabled = !busy;
         PauseButton.IsEnabled = sending is not null;
         FilesButton.IsEnabled = !busy;
         FolderButton.IsEnabled = !busy;
@@ -267,32 +272,43 @@ public sealed partial class MainWindow : Window
     }
     private async void StartReceiving(object? sender, RoutedEventArgs e)
     {
-        ReceiveButton.IsEnabled = false;
+        if (receiver is not null || receiverChanging) return;
+        receiverChanging = true;
+        SetReceiverControls();
         try
         {
-            if (!int.TryParse(ReceivePort.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port) || port is < 1 or > 65535)
-                throw new InvalidOperationException("端口应在 1–65535 之间。");
-            var address = ReceiveAddress.Text?.Trim() ?? "";
+            var (address, port) = ReadReceiveEndpoint();
             var directory = ReceiveDirectory.Text?.Trim() ?? "";
             if (directory.Length == 0) throw new InvalidOperationException("请选择保存位置。");
+            if (!SaveConnectionPreferences()) return;
+            receiverLease = connections.AcquireReceiverLease();
+            var oldIdentity = storedIdentity;
+            storedIdentity = await Task.Run(() => connections.GetIdentity());
+            var identity = storedIdentity;
             var progress = new Progress<TransferProgress>(UpdateReceiveProgress);
-            receiver = await Task.Run(() => TransferReceiver.StartAsync(address, port, directory, progress));
+            receiver = await Task.Run(() => TransferReceiver.StartAsync(address, port, directory, progress, identity: identity));
             ReceiveCode.Text = receiver.Invitation.Encode();
             receiveState = "ReceiverStarted";
             receiveStatus = "WaitingForSender";
             receiveProgress = null;
             RenderReceive();
             CopyButton.IsEnabled = true;
-            StopReceiveButton.IsEnabled = true;
-            SetReceiverFields(false);
             receiveTimer.Start();
-            Message("ShareInvitation");
+            Message(oldIdentity is not null && oldIdentity.Token != identity.Token ? "InvitationUpdated" : "ShareInvitation");
         }
-        catch (Exception error) { ShowError(error, "ReceiveStartFailed"); ReceiveButton.IsEnabled = true; }
+        catch (Exception error) { ShowError(error, "ReceiveStartFailed"); }
+        finally
+        {
+            if (receiver is null) { receiverLease?.Dispose(); receiverLease = null; }
+            receiverChanging = false;
+            SetReceiverControls();
+        }
     }
     private async void StopReceiving(object? sender, RoutedEventArgs e)
     {
-        StopReceiveButton.IsEnabled = false;
+        if (receiverChanging) return;
+        receiverChanging = true;
+        SetReceiverControls();
         try
         {
             if (receiver is not null) await receiver.DisposeAsync();
@@ -303,10 +319,10 @@ public sealed partial class MainWindow : Window
         {
             receiveTimer.Stop();
             receiver = null;
-            ReceiveCode.Text = "";
-            CopyButton.IsEnabled = false;
-            ReceiveButton.IsEnabled = true;
-            SetReceiverFields(true);
+            receiverLease?.Dispose();
+            receiverLease = null;
+            receiverChanging = false;
+            SetReceiverControls();
             receiveState = "ReceiverStoppedState";
             RenderReceive();
         }
