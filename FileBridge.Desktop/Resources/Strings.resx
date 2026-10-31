@@ -1,0 +1,390 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Tagline" xml:space="preserve">
+    <value>Send large files, intact.</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="SendTab" xml:space="preserve">
+    <value>Send files</value>
+  </data>
+  <data name="ReceiveTab" xml:space="preserve">
+    <value>Receive files</value>
+  </data>
+  <data name="PrepareSend" xml:space="preserve">
+    <value>Ready to send</value>
+  </data>
+  <data name="ChooseFiles" xml:space="preserve">
+    <value>Choose files</value>
+  </data>
+  <data name="ChooseFolder" xml:space="preserve">
+    <value>Choose folder</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="SelectionHint" xml:space="preserve">
+    <value>Choose files or an entire folder</value>
+  </data>
+  <data name="ConnectionCode" xml:space="preserve">
+    <value>Receiver connection code</value>
+  </data>
+  <data name="ConnectionCodeHint" xml:space="preserve">
+    <value>Paste the complete code from the receiver’s Receive files tab</value>
+  </data>
+  <data name="StartSending" xml:space="preserve">
+    <value>Start sending</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="TransferGuarantee" xml:space="preserve">
+    <value>Auto reconnect · SHA-256 verification</value>
+  </data>
+  <data name="WaitingForFiles" xml:space="preserve">
+    <value>Waiting for files</value>
+  </data>
+  <data name="ParallelHint" xml:space="preserve">
+    <value>Choose 1–10 streams before sending; the receiver matches automatically. Pause to adjust.</value>
+  </data>
+  <data name="ConnectionHelp" xml:space="preserve">
+    <value>Connect both computers over a reachable LAN or Tailscale / VPN. Start receiving, then share the connection code with the sender.</value>
+  </data>
+  <data name="ReceiveAddressLabel" xml:space="preserve">
+    <value>Receive address (Tailscale / LAN)</value>
+  </data>
+  <data name="ReceiveAddressHint" xml:space="preserve">
+    <value>For example, 100.65.24.64 or 192.168.1.10</value>
+  </data>
+  <data name="ReceiveAddressAccessible" xml:space="preserve">
+    <value>Local IP address</value>
+  </data>
+  <data name="Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="ReceivePortAccessible" xml:space="preserve">
+    <value>Receive port</value>
+  </data>
+  <data name="SaveLocation" xml:space="preserve">
+    <value>Save location</value>
+  </data>
+  <data name="StartReceiving" xml:space="preserve">
+    <value>Start receiving</value>
+  </data>
+  <data name="StopReceiving" xml:space="preserve">
+    <value>Stop receiving</value>
+  </data>
+  <data name="NotStarted" xml:space="preserve">
+    <value>Not started</value>
+  </data>
+  <data name="InvitationLabel" xml:space="preserve">
+    <value>Connection code for the sender</value>
+  </data>
+  <data name="CopyCode" xml:space="preserve">
+    <value>Copy code</value>
+  </data>
+  <data name="InvitationHint" xml:space="preserve">
+    <value>Start receiving to generate a connection code</value>
+  </data>
+  <data name="InvitationAccessible" xml:space="preserve">
+    <value>Generated connection code</value>
+  </data>
+  <data name="WaitingToReceive" xml:space="preserve">
+    <value>Waiting to start receiving</value>
+  </data>
+  <data name="ResumeHint" xml:space="preserve">
+    <value>Partial files are kept so you can resume after restarting.</value>
+  </data>
+  <data name="ReceiveSafety" xml:space="preserve">
+    <value>Listens on the selected address only while receiving is enabled. Existing files with different contents are preserved. Files are marked complete after verification.</value>
+  </data>
+  <data name="Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="LocalOnly" xml:space="preserve">
+    <value>This computer only · {0}</value>
+  </data>
+  <data name="LocalAddress" xml:space="preserve">
+    <value>Local address · {0}</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Desktop {0}</value>
+  </data>
+  <data name="SelectedFiles" xml:space="preserve">
+    <value>Files: {0} · Total: {1}</value>
+  </data>
+  <data name="FilesReady" xml:space="preserve">
+    <value>Files ready</value>
+  </data>
+  <data name="FilesAdded" xml:space="preserve">
+    <value>Files added. Paste the receiver’s connection code.</value>
+  </data>
+  <data name="TransferActive" xml:space="preserve">
+    <value>Transfer in progress. Closing the window pauses the transfer.</value>
+  </data>
+  <data name="SendComplete" xml:space="preserve">
+    <value>All files sent. SHA-256 verification passed.</value>
+  </data>
+  <data name="VerifyAgain" xml:space="preserve">
+    <value>Verify again</value>
+  </data>
+  <data name="Paused" xml:space="preserve">
+    <value>Paused. Choose Continue sending to verify and resume.</value>
+  </data>
+  <data name="ContinueSending" xml:space="preserve">
+    <value>Continue sending</value>
+  </data>
+  <data name="SendFailed" xml:space="preserve">
+    <value>Transfer incomplete</value>
+  </data>
+  <data name="RetryResume" xml:space="preserve">
+    <value>Retry and resume</value>
+  </data>
+  <data name="PickerFilesTitle" xml:space="preserve">
+    <value>Choose files to send</value>
+  </data>
+  <data name="PickerSourceFolderTitle" xml:space="preserve">
+    <value>Choose a source folder</value>
+  </data>
+  <data name="PickerDestinationTitle" xml:space="preserve">
+    <value>Choose a receive folder</value>
+  </data>
+  <data name="ReceiverStarted" xml:space="preserve">
+    <value>Receiving enabled</value>
+  </data>
+  <data name="WaitingForSender" xml:space="preserve">
+    <value>Waiting for a sender</value>
+  </data>
+  <data name="ShareInvitation" xml:space="preserve">
+    <value>Copy the connection code for the sender and keep this app open.</value>
+  </data>
+  <data name="ReceiveStopped" xml:space="preserve">
+    <value>Receiving stopped. Starting again generates a new code; partial files can still resume.</value>
+  </data>
+  <data name="ReceiverStoppedState" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="InvitationCopied" xml:space="preserve">
+    <value>Code copied. Share it only with the intended sender.</value>
+  </data>
+  <data name="ReceiveStartFailed" xml:space="preserve">
+    <value>Could not start receiving: {0}</value>
+  </data>
+  <data name="LanguageNotSaved" xml:space="preserve">
+    <value>Language changed, but the preference could not be saved.</value>
+  </data>
+  <data name="Core.Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Core.SelectFilesFirst" xml:space="preserve">
+    <value>Choose files or a folder first.</value>
+  </data>
+  <data name="Core.InvalidPort" xml:space="preserve">
+    <value>Use a port from 1 to 65535.</value>
+  </data>
+  <data name="Core.ChooseSaveLocation" xml:space="preserve">
+    <value>Choose a save location.</value>
+  </data>
+  <data name="Core.InvitationRequired" xml:space="preserve">
+    <value>Paste the complete connection code from FileBridge Desktop (starting with fb2_).</value>
+  </data>
+  <data name="Core.InvalidInvitation" xml:space="preserve">
+    <value>The address or authentication details in the connection code are invalid.</value>
+  </data>
+  <data name="Core.IncompleteInvitation" xml:space="preserve">
+    <value>The connection code is incomplete. Copy the entire line again.</value>
+  </data>
+  <data name="Core.InvalidEndpoint" xml:space="preserve">
+    <value>Enter a specific local IP address and a valid receive port.</value>
+  </data>
+  <data name="Core.InvalidPath" xml:space="preserve">
+    <value>Invalid file path.</value>
+  </data>
+  <data name="Core.PathOutsideRoot" xml:space="preserve">
+    <value>The file path is outside the receive folder.</value>
+  </data>
+  <data name="Core.UnsafeReceiveLink" xml:space="preserve">
+    <value>The receive path cannot contain symbolic links or directory junctions.</value>
+  </data>
+  <data name="Core.RejectedCode" xml:space="preserve">
+    <value>Invalid connection code. Copy it again from the receiver.</value>
+  </data>
+  <data name="Core.ReceiverBusy" xml:space="preserve">
+    <value>The receiver is busy. Try again shortly.</value>
+  </data>
+  <data name="Core.EndpointMissing" xml:space="preserve">
+    <value>Endpoint not found.</value>
+  </data>
+  <data name="Core.InvalidMetadataSize" xml:space="preserve">
+    <value>The file metadata is too large or invalid.</value>
+  </data>
+  <data name="Core.InvalidMetadata" xml:space="preserve">
+    <value>Invalid file metadata.</value>
+  </data>
+  <data name="CorePrefix.ExistingFile" xml:space="preserve">
+    <value>A file with the same name but different contents already exists and has been preserved: </value>
+  </data>
+  <data name="Core.InvalidPartialSize" xml:space="preserve">
+    <value>The partial file has an unexpected size. Choose another receive folder.</value>
+  </data>
+  <data name="Core.ResumeCheck" xml:space="preserve">
+    <value>Verifying resume data</value>
+  </data>
+  <data name="Core.WaitingForData" xml:space="preserve">
+    <value>Waiting for data</value>
+  </data>
+  <data name="Core.SessionRestarted" xml:space="preserve">
+    <value>The receiver session restarted. Reconnect to continue.</value>
+  </data>
+  <data name="Core.InvalidOffset" xml:space="preserve">
+    <value>Invalid file offset.</value>
+  </data>
+  <data name="Core.InvalidChunkSize" xml:space="preserve">
+    <value>Invalid chunk size.</value>
+  </data>
+  <data name="Core.BadChunkHash" xml:space="preserve">
+    <value>Chunk verification failed. No data was written.</value>
+  </data>
+  <data name="Core.SessionChanged" xml:space="preserve">
+    <value>The receiver session changed. Reconnect to continue.</value>
+  </data>
+  <data name="Core.ProgressChanged" xml:space="preserve">
+    <value>The receive progress changed. Reconnect to continue.</value>
+  </data>
+  <data name="Core.OutsideWindow" xml:space="preserve">
+    <value>The chunk is outside the parallel upload window.</value>
+  </data>
+  <data name="Core.Receiving" xml:space="preserve">
+    <value>Receiving</value>
+  </data>
+  <data name="Core.GapTimeout" xml:space="preserve">
+    <value>Timed out waiting for an earlier chunk. Reconnect to continue.</value>
+  </data>
+  <data name="Core.Verifying" xml:space="preserve">
+    <value>Verifying the complete file</value>
+  </data>
+  <data name="Core.BadFileHash" xml:space="preserve">
+    <value>Whole-file verification failed. The file was not published.</value>
+  </data>
+  <data name="Core.NameConflict" xml:space="preserve">
+    <value>A file with that name already exists. The original was preserved.</value>
+  </data>
+  <data name="Core.ReceiveComplete" xml:space="preserve">
+    <value>Received · checksum verified</value>
+  </data>
+  <data name="CorePrefix.SourceLink" xml:space="preserve">
+    <value>Symbolic links and directory junctions cannot be sent: </value>
+  </data>
+  <data name="CorePrefix.InvalidName" xml:space="preserve">
+    <value>Duplicate or invalid file name: </value>
+  </data>
+  <data name="Core.NoFiles" xml:space="preserve">
+    <value>No files to send. Empty folders are not transferred.</value>
+  </data>
+  <data name="Core.CalculatingHash" xml:space="preserve">
+    <value>Calculating checksum</value>
+  </data>
+  <data name="Core.SourceChanged" xml:space="preserve">
+    <value>The source file changed. Stop editing it and send it again.</value>
+  </data>
+  <data name="CorePrefix.Retry" xml:space="preserve">
+    <value>Connection interrupted; resuming </value>
+  </data>
+  <data name="Core.NoResumeState" xml:space="preserve">
+    <value>The receiver did not return valid progress.</value>
+  </data>
+  <data name="Core.AlreadyComplete" xml:space="preserve">
+    <value>Already complete · checksum matched</value>
+  </data>
+  <data name="Core.InvalidResumeState" xml:space="preserve">
+    <value>The receiver returned invalid progress.</value>
+  </data>
+  <data name="Core.SourceTruncated" xml:space="preserve">
+    <value>The source file was truncated.</value>
+  </data>
+  <data name="Core.ResetFailed" xml:space="preserve">
+    <value>Could not reset the damaged partial file.</value>
+  </data>
+  <data name="Core.ResendingCorrupt" xml:space="preserve">
+    <value>Partial data is damaged; resending this file</value>
+  </data>
+  <data name="Core.BadAcknowledgement" xml:space="preserve">
+    <value>The receiver acknowledged an unexpected offset.</value>
+  </data>
+  <data name="Core.Sending" xml:space="preserve">
+    <value>Sending</value>
+  </data>
+  <data name="Core.SendVerified" xml:space="preserve">
+    <value>Transfer complete · checksum verified</value>
+  </data>
+  <data name="CorePrefix.ReceiveError" xml:space="preserve">
+    <value>Receive error: </value>
+  </data>
+  <data name="ParallelStreams" xml:space="preserve">
+    <value> · {0} parallel streams</value>
+  </data>
+  <data name="StreamCount" xml:space="preserve">
+    <value>Streams</value>
+  </data>
+  <data name="StreamCountHint" xml:space="preserve">
+    <value>Choose 1–10 streams before sending. 1 disables parallel transfer; the receiver automatically matches its supported limit. Pause to change.</value>
+  </data>
+  <data name="ReceiveMetricsHint" xml:space="preserve">
+    <value>Speed, time remaining and parallel mode appear when a sender connects.</value>
+  </data>
+  <data name="ReceiveSpeed" xml:space="preserve">
+    <value>Receive speed: {0}</value>
+  </data>
+  <data name="ParallelEnabled" xml:space="preserve">
+    <value>Parallel: on ({0} streams)</value>
+  </data>
+  <data name="ParallelDisabled" xml:space="preserve">
+    <value>Parallel: off (1 stream)</value>
+  </data>
+  <data name="ParallelNegotiating" xml:space="preserve">
+    <value>Parallel: negotiating</value>
+  </data>
+  <data name="TimeRemaining" xml:space="preserve">
+    <value>Time left (this file): about {0}</value>
+  </data>
+  <data name="TimeWaiting" xml:space="preserve">
+    <value>Time left (this file): estimating / waiting for data</value>
+  </data>
+  <data name="TimeVerifying" xml:space="preserve">
+    <value>Data received; verifying file</value>
+  </data>
+  <data name="TimeComplete" xml:space="preserve">
+    <value>File received and verified</value>
+  </data>
+  <data name="DurationHours" xml:space="preserve">
+    <value>{0} h {1} min</value>
+  </data>
+  <data name="DurationMinutes" xml:space="preserve">
+    <value>{0} min {1} s</value>
+  </data>
+  <data name="DurationSeconds" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="Core.InvalidParallelChunks" xml:space="preserve">
+    <value>Invalid stream count.</value>
+  </data>
+  <data name="LanguageAction" xml:space="preserve">
+    <value>Choose language</value>
+  </data>
+  <data name="ScanningFiles" xml:space="preserve">
+    <value>Scanning selected files…</value>
+  </data>
+</root>

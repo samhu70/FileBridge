@@ -1,0 +1,390 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Tagline" xml:space="preserve">
+    <value>把大文件，完整送到另一端。</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="SendTab" xml:space="preserve">
+    <value>发送文件</value>
+  </data>
+  <data name="ReceiveTab" xml:space="preserve">
+    <value>接收文件</value>
+  </data>
+  <data name="PrepareSend" xml:space="preserve">
+    <value>准备发送</value>
+  </data>
+  <data name="ChooseFiles" xml:space="preserve">
+    <value>选择文件</value>
+  </data>
+  <data name="ChooseFolder" xml:space="preserve">
+    <value>选择文件夹</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>清空</value>
+  </data>
+  <data name="SelectionHint" xml:space="preserve">
+    <value>选择文件或整个素材文件夹</value>
+  </data>
+  <data name="ConnectionCode" xml:space="preserve">
+    <value>接收端连接码</value>
+  </data>
+  <data name="ConnectionCodeHint" xml:space="preserve">
+    <value>粘贴对方在「接收文件」中生成的完整连接码</value>
+  </data>
+  <data name="StartSending" xml:space="preserve">
+    <value>开始发送</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>暂停</value>
+  </data>
+  <data name="TransferGuarantee" xml:space="preserve">
+    <value>断线自动重连 · 完成后校验 SHA-256</value>
+  </data>
+  <data name="WaitingForFiles" xml:space="preserve">
+    <value>等待选择文件</value>
+  </data>
+  <data name="ParallelHint" xml:space="preserve">
+    <value>发送前可选择 1–10 路并发；接收端自动匹配。暂停后可调整。</value>
+  </data>
+  <data name="ConnectionHelp" xml:space="preserve">
+    <value>两台电脑需要处于可互通的局域网，或通过 Tailscale / VPN 连接。接收端先开始接收，再把连接码交给发送端。</value>
+  </data>
+  <data name="ReceiveAddressLabel" xml:space="preserve">
+    <value>本机接收地址（Tailscale / 局域网）</value>
+  </data>
+  <data name="ReceiveAddressHint" xml:space="preserve">
+    <value>例如 100.65.24.64 或 192.168.1.10</value>
+  </data>
+  <data name="ReceiveAddressAccessible" xml:space="preserve">
+    <value>本机 IP 地址</value>
+  </data>
+  <data name="Port" xml:space="preserve">
+    <value>端口</value>
+  </data>
+  <data name="ReceivePortAccessible" xml:space="preserve">
+    <value>接收端口</value>
+  </data>
+  <data name="SaveLocation" xml:space="preserve">
+    <value>保存位置</value>
+  </data>
+  <data name="StartReceiving" xml:space="preserve">
+    <value>开始接收</value>
+  </data>
+  <data name="StopReceiving" xml:space="preserve">
+    <value>停止接收</value>
+  </data>
+  <data name="NotStarted" xml:space="preserve">
+    <value>尚未启动</value>
+  </data>
+  <data name="InvitationLabel" xml:space="preserve">
+    <value>交给发送方的连接码</value>
+  </data>
+  <data name="CopyCode" xml:space="preserve">
+    <value>复制连接码</value>
+  </data>
+  <data name="InvitationHint" xml:space="preserve">
+    <value>开始接收后，这里会显示连接码</value>
+  </data>
+  <data name="InvitationAccessible" xml:space="preserve">
+    <value>生成的连接码</value>
+  </data>
+  <data name="WaitingToReceive" xml:space="preserve">
+    <value>等待启动接收</value>
+  </data>
+  <data name="ResumeHint" xml:space="preserve">
+    <value>未完成文件会保留，重新启动后可以继续接收。</value>
+  </data>
+  <data name="ReceiveSafety" xml:space="preserve">
+    <value>仅在接收启动期间监听所选地址。已有同名不同内容文件会被保留；新文件校验完整后才显示为完成。</value>
+  </data>
+  <data name="Ready" xml:space="preserve">
+    <value>就绪</value>
+  </data>
+  <data name="LocalOnly" xml:space="preserve">
+    <value>仅本机 · {0}</value>
+  </data>
+  <data name="LocalAddress" xml:space="preserve">
+    <value>本机地址 · {0}</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>桌面版 {0}</value>
+  </data>
+  <data name="SelectedFiles" xml:space="preserve">
+    <value>{0} 个文件 · 共 {1}</value>
+  </data>
+  <data name="FilesReady" xml:space="preserve">
+    <value>文件已就绪</value>
+  </data>
+  <data name="FilesAdded" xml:space="preserve">
+    <value>文件已添加，请粘贴接收端连接码。</value>
+  </data>
+  <data name="TransferActive" xml:space="preserve">
+    <value>传输进行中，关闭窗口会暂停传输。</value>
+  </data>
+  <data name="SendComplete" xml:space="preserve">
+    <value>全部文件发送完成，SHA-256 校验通过。</value>
+  </data>
+  <data name="VerifyAgain" xml:space="preserve">
+    <value>再次核对</value>
+  </data>
+  <data name="Paused" xml:space="preserve">
+    <value>已暂停，点击「继续发送」会校验已有进度并续传。</value>
+  </data>
+  <data name="ContinueSending" xml:space="preserve">
+    <value>继续发送</value>
+  </data>
+  <data name="SendFailed" xml:space="preserve">
+    <value>发送未完成</value>
+  </data>
+  <data name="RetryResume" xml:space="preserve">
+    <value>重试并续传</value>
+  </data>
+  <data name="PickerFilesTitle" xml:space="preserve">
+    <value>选择要发送的文件</value>
+  </data>
+  <data name="PickerSourceFolderTitle" xml:space="preserve">
+    <value>选择素材文件夹</value>
+  </data>
+  <data name="PickerDestinationTitle" xml:space="preserve">
+    <value>选择接收目录</value>
+  </data>
+  <data name="ReceiverStarted" xml:space="preserve">
+    <value>接收已启动</value>
+  </data>
+  <data name="WaitingForSender" xml:space="preserve">
+    <value>等待发送端连接</value>
+  </data>
+  <data name="ShareInvitation" xml:space="preserve">
+    <value>请复制连接码交给发送方，并保持客户端打开。</value>
+  </data>
+  <data name="ReceiveStopped" xml:space="preserve">
+    <value>接收已停止。再次开始接收会生成新连接码，未完成文件仍可续传。</value>
+  </data>
+  <data name="ReceiverStoppedState" xml:space="preserve">
+    <value>已停止</value>
+  </data>
+  <data name="InvitationCopied" xml:space="preserve">
+    <value>连接码已复制。只交给预期的发送方。</value>
+  </data>
+  <data name="ReceiveStartFailed" xml:space="preserve">
+    <value>无法开始接收：{0}</value>
+  </data>
+  <data name="LanguageNotSaved" xml:space="preserve">
+    <value>语言已切换，但无法保存设置。</value>
+  </data>
+  <data name="Core.Pending" xml:space="preserve">
+    <value>待发送</value>
+  </data>
+  <data name="Core.SelectFilesFirst" xml:space="preserve">
+    <value>请先选择文件或文件夹。</value>
+  </data>
+  <data name="Core.InvalidPort" xml:space="preserve">
+    <value>端口应在 1–65535 之间。</value>
+  </data>
+  <data name="Core.ChooseSaveLocation" xml:space="preserve">
+    <value>请选择保存位置。</value>
+  </data>
+  <data name="Core.InvitationRequired" xml:space="preserve">
+    <value>请粘贴 FileBridge 桌面客户端生成的完整连接码（fb2_ 开头）。</value>
+  </data>
+  <data name="Core.InvalidInvitation" xml:space="preserve">
+    <value>连接码中的地址或认证信息无效。</value>
+  </data>
+  <data name="Core.IncompleteInvitation" xml:space="preserve">
+    <value>连接码不完整，请重新复制整行。</value>
+  </data>
+  <data name="Core.InvalidEndpoint" xml:space="preserve">
+    <value>请填写接收电脑的具体 IP 和有效端口。</value>
+  </data>
+  <data name="Core.InvalidPath" xml:space="preserve">
+    <value>文件路径无效。</value>
+  </data>
+  <data name="Core.PathOutsideRoot" xml:space="preserve">
+    <value>文件路径超出接收目录。</value>
+  </data>
+  <data name="Core.UnsafeReceiveLink" xml:space="preserve">
+    <value>接收路径不能使用符号链接或目录联接。</value>
+  </data>
+  <data name="Core.RejectedCode" xml:space="preserve">
+    <value>连接码无效，请重新复制。</value>
+  </data>
+  <data name="Core.ReceiverBusy" xml:space="preserve">
+    <value>接收端忙，请稍后重试。</value>
+  </data>
+  <data name="Core.EndpointMissing" xml:space="preserve">
+    <value>接口不存在。</value>
+  </data>
+  <data name="Core.InvalidMetadataSize" xml:space="preserve">
+    <value>文件信息过大或无效。</value>
+  </data>
+  <data name="Core.InvalidMetadata" xml:space="preserve">
+    <value>文件信息无效。</value>
+  </data>
+  <data name="CorePrefix.ExistingFile" xml:space="preserve">
+    <value>已有同名不同内容文件，已保留原文件：</value>
+  </data>
+  <data name="Core.InvalidPartialSize" xml:space="preserve">
+    <value>临时文件大小异常，请更换接收目录。</value>
+  </data>
+  <data name="Core.ResumeCheck" xml:space="preserve">
+    <value>校验续传进度</value>
+  </data>
+  <data name="Core.WaitingForData" xml:space="preserve">
+    <value>等待数据</value>
+  </data>
+  <data name="Core.SessionRestarted" xml:space="preserve">
+    <value>会话已重启，请重新连接。</value>
+  </data>
+  <data name="Core.InvalidOffset" xml:space="preserve">
+    <value>文件偏移无效。</value>
+  </data>
+  <data name="Core.InvalidChunkSize" xml:space="preserve">
+    <value>数据块大小无效。</value>
+  </data>
+  <data name="Core.BadChunkHash" xml:space="preserve">
+    <value>数据块校验失败，未写入。</value>
+  </data>
+  <data name="Core.SessionChanged" xml:space="preserve">
+    <value>会话已变化，请重新连接。</value>
+  </data>
+  <data name="Core.ProgressChanged" xml:space="preserve">
+    <value>进度已变化，请重新连接。</value>
+  </data>
+  <data name="Core.OutsideWindow" xml:space="preserve">
+    <value>数据块超出并行窗口。</value>
+  </data>
+  <data name="Core.Receiving" xml:space="preserve">
+    <value>接收中</value>
+  </data>
+  <data name="Core.GapTimeout" xml:space="preserve">
+    <value>前序数据块等待超时，请重新连接。</value>
+  </data>
+  <data name="Core.Verifying" xml:space="preserve">
+    <value>校验完整文件</value>
+  </data>
+  <data name="Core.BadFileHash" xml:space="preserve">
+    <value>完整文件校验失败，未发布文件。</value>
+  </data>
+  <data name="Core.NameConflict" xml:space="preserve">
+    <value>同名文件已存在，保留原文件。</value>
+  </data>
+  <data name="Core.ReceiveComplete" xml:space="preserve">
+    <value>接收完成 · 校验通过</value>
+  </data>
+  <data name="CorePrefix.SourceLink" xml:space="preserve">
+    <value>不发送符号链接或目录联接：</value>
+  </data>
+  <data name="CorePrefix.InvalidName" xml:space="preserve">
+    <value>文件名重复或无效：</value>
+  </data>
+  <data name="Core.NoFiles" xml:space="preserve">
+    <value>没有找到可发送的文件，空目录不会传输。</value>
+  </data>
+  <data name="Core.CalculatingHash" xml:space="preserve">
+    <value>计算文件校验值</value>
+  </data>
+  <data name="Core.SourceChanged" xml:space="preserve">
+    <value>源文件发生变化，请停止编辑后重新发送。</value>
+  </data>
+  <data name="CorePrefix.Retry" xml:space="preserve">
+    <value>连接中断，自动续传 </value>
+  </data>
+  <data name="Core.NoResumeState" xml:space="preserve">
+    <value>接收端未返回有效进度。</value>
+  </data>
+  <data name="Core.AlreadyComplete" xml:space="preserve">
+    <value>已完成 · 校验一致</value>
+  </data>
+  <data name="Core.InvalidResumeState" xml:space="preserve">
+    <value>接收端进度无效。</value>
+  </data>
+  <data name="Core.SourceTruncated" xml:space="preserve">
+    <value>源文件被截断。</value>
+  </data>
+  <data name="Core.ResetFailed" xml:space="preserve">
+    <value>无法重置损坏的临时文件。</value>
+  </data>
+  <data name="Core.ResendingCorrupt" xml:space="preserve">
+    <value>临时数据损坏，重传当前文件</value>
+  </data>
+  <data name="Core.BadAcknowledgement" xml:space="preserve">
+    <value>接收端确认进度不一致。</value>
+  </data>
+  <data name="Core.Sending" xml:space="preserve">
+    <value>发送中</value>
+  </data>
+  <data name="Core.SendVerified" xml:space="preserve">
+    <value>传输完成 · 校验通过</value>
+  </data>
+  <data name="CorePrefix.ReceiveError" xml:space="preserve">
+    <value>接收出错：</value>
+  </data>
+  <data name="ParallelStreams" xml:space="preserve">
+    <value> · {0} 路并行</value>
+  </data>
+  <data name="StreamCount" xml:space="preserve">
+    <value>并发路数</value>
+  </data>
+  <data name="StreamCountHint" xml:space="preserve">
+    <value>发送前选择 1–10 路。1 路关闭并行；接收端自动匹配支持的上限。暂停后可调整。</value>
+  </data>
+  <data name="ReceiveMetricsHint" xml:space="preserve">
+    <value>发送端连接后显示速度、预计剩余时间和并行状态。</value>
+  </data>
+  <data name="ReceiveSpeed" xml:space="preserve">
+    <value>接收速度：{0}</value>
+  </data>
+  <data name="ParallelEnabled" xml:space="preserve">
+    <value>并行：已开启（{0} 路）</value>
+  </data>
+  <data name="ParallelDisabled" xml:space="preserve">
+    <value>并行：已关闭（1 路）</value>
+  </data>
+  <data name="ParallelNegotiating" xml:space="preserve">
+    <value>并行：等待协商</value>
+  </data>
+  <data name="TimeRemaining" xml:space="preserve">
+    <value>当前文件预计剩余：约 {0}</value>
+  </data>
+  <data name="TimeWaiting" xml:space="preserve">
+    <value>当前文件预计剩余：估算中 / 等待数据</value>
+  </data>
+  <data name="TimeVerifying" xml:space="preserve">
+    <value>数据已收齐，正在校验文件</value>
+  </data>
+  <data name="TimeComplete" xml:space="preserve">
+    <value>文件接收完成，校验通过</value>
+  </data>
+  <data name="DurationHours" xml:space="preserve">
+    <value>{0} 小时 {1} 分钟</value>
+  </data>
+  <data name="DurationMinutes" xml:space="preserve">
+    <value>{0} 分钟 {1} 秒</value>
+  </data>
+  <data name="DurationSeconds" xml:space="preserve">
+    <value>{0} 秒</value>
+  </data>
+  <data name="Core.InvalidParallelChunks" xml:space="preserve">
+    <value>并发数无效。</value>
+  </data>
+  <data name="LanguageAction" xml:space="preserve">
+    <value>选择语言</value>
+  </data>
+  <data name="ScanningFiles" xml:space="preserve">
+    <value>正在扫描所选文件…</value>
+  </data>
+</root>

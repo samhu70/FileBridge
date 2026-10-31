@@ -1,0 +1,111 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:FileBridge.Desktop"
+        x:Class="FileBridge.Desktop.MainWindow" Title="FileBridge" Icon="avares://FileBridge/Assets/icon.ico" Width="1000" Height="820" MinWidth="860" MinHeight="760"
+        Background="#F3F6FA" WindowStartupLocation="CenterScreen" FontSize="14">
+  <Window.Styles>
+    <Style Selector="TextBlock"><Setter Property="Foreground" Value="#182B42" /></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="#66768A" /></Style>
+    <Style Selector="TextBlock.label"><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="15" /></Style>
+    <Style Selector="Button"><Setter Property="CornerRadius" Value="8" /><Setter Property="Padding" Value="16,10" /></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="#147D75" /><Setter Property="Foreground" Value="White" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="#0F6862" /><Setter Property="Foreground" Value="White" /></Style>
+    <Style Selector="TextBox"><Setter Property="CornerRadius" Value="8" /><Setter Property="Padding" Value="12,10" /></Style>
+    <Style Selector="Border.card"><Setter Property="Background" Value="White" /><Setter Property="CornerRadius" Value="14" /><Setter Property="BorderBrush" Value="#E0E7EF" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Padding" Value="22" /></Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="30,24,30,18" RowSpacing="16">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+      <Image Width="54" Height="54" Source="avares://FileBridge/Assets/logo.png" Stretch="Uniform" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Spacing="3"><TextBlock Text="FileBridge" FontSize="27" FontWeight="SemiBold" /><TextBlock Text="{DynamicResource Text.Tagline}" Classes="muted" /></StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Border Background="#E4F2EF" CornerRadius="16" Padding="12,7" VerticalAlignment="Center">
+          <TextBlock x:Name="NetworkLabel" Foreground="#176A63" FontSize="12" />
+        </Border>
+        <Button x:Name="LanguageButton" Width="36" Height="36" Padding="7" AutomationProperties.Name="{DynamicResource Text.LanguageAction}" ToolTip.Tip="{DynamicResource Text.LanguageAction}">
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedRight">
+              <MenuItem x:Name="ChineseLanguageItem" Header="中文" Tag="zh" ToggleType="Radio" GroupName="Language" Click="ChangeLanguage" />
+              <MenuItem x:Name="EnglishLanguageItem" Header="English" Tag="en" ToggleType="Radio" GroupName="Language" Click="ChangeLanguage" />
+            </MenuFlyout>
+          </Button.Flyout>
+          <Path Width="20" Height="20" Stretch="Uniform" Stroke="#176A63" StrokeThickness="1.5" Data="M 10,1 A 9,9 0 1 0 10,19 A 9,9 0 1 0 10,1 M 1,10 L 19,10 M 10,1 C 5,5 5,15 10,19 C 15,15 15,5 10,1 Z" />
+        </Button>
+      </StackPanel>
+    </Grid>
+    <Border Grid.Row="1" Classes="card" Padding="8,4,8,12">
+      <TabControl>
+        <TabItem Header="{DynamicResource Text.SendTab}">
+          <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="16,16,16,4" RowSpacing="13">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+              <StackPanel VerticalAlignment="Center"><TextBlock Text="{DynamicResource Text.PrepareSend}" Classes="label" /><TextBlock x:Name="SelectionLabel" TextWrapping="Wrap" Text="{DynamicResource Text.SelectionHint}" Classes="muted" Margin="0,4,0,0" /></StackPanel>
+              <Button Grid.Column="1" x:Name="FilesButton" Content="{DynamicResource Text.ChooseFiles}" Click="ChooseFiles" />
+              <Button Grid.Column="2" x:Name="FolderButton" Content="{DynamicResource Text.ChooseFolder}" Click="ChooseFolder" />
+              <Button Grid.Column="3" x:Name="ClearButton" Content="{DynamicResource Text.Clear}" Click="ClearFiles" />
+            </Grid>
+            <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="9" BorderBrush="#E5EAF1" BorderThickness="1" MinHeight="126" MaxHeight="180">
+              <ScrollViewer><ItemsControl x:Name="FileList" Margin="12,6">
+                <ItemsControl.ItemTemplate><DataTemplate x:DataType="local:FileRow">
+                  <Grid ColumnDefinitions="*,90,150" Margin="0,8" ColumnSpacing="12">
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                    <TextBlock Grid.Column="1" Text="{Binding Size}" Classes="muted" HorizontalAlignment="Right" />
+                    <TextBlock Grid.Column="2" Text="{Binding Status}" ToolTip.Tip="{Binding Status}" Foreground="#147D75" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </DataTemplate></ItemsControl.ItemTemplate>
+              </ItemsControl></ScrollViewer>
+            </Border>
+            <StackPanel Grid.Row="2" Spacing="7">
+              <TextBlock Text="{DynamicResource Text.ConnectionCode}" Classes="label" />
+              <TextBox x:Name="SendCode" AcceptsReturn="True" TextWrapping="Wrap" Height="78" MaxLength="4096" PlaceholderText="{DynamicResource Text.ConnectionCodeHint}" AutomationProperties.Name="{DynamicResource Text.ConnectionCode}" />
+            </StackPanel>
+            <Grid Grid.Row="3" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10">
+              <Button x:Name="SendButton" Classes="primary" Content="{DynamicResource Text.StartSending}" Click="SendFiles" />
+              <Button Grid.Column="1" x:Name="PauseButton" Content="{DynamicResource Text.Pause}" IsEnabled="False" Click="PauseSending" />
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="{DynamicResource Text.StreamCount}" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+                <ComboBox x:Name="StreamPicker" Width="72" AutomationProperties.Name="{DynamicResource Text.StreamCount}" ToolTip.Tip="{DynamicResource Text.StreamCountHint}" />
+              </StackPanel>
+              <TextBlock Grid.Column="3" Text="{DynamicResource Text.TransferGuarantee}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="210" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+            <StackPanel Grid.Row="4" Spacing="8" Margin="0,5,0,0">
+              <Grid ColumnDefinitions="*,Auto"><TextBlock x:Name="SendStatus" Text="{DynamicResource Text.WaitingForFiles}" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" x:Name="SendPercent" Text="0%" FontWeight="SemiBold" /></Grid>
+              <ProgressBar x:Name="SendProgress" Minimum="0" Maximum="100" Height="7" Foreground="#147D75" />
+              <TextBlock x:Name="SendDetail" Text="{DynamicResource Text.ParallelHint}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Grid.Row="5" Background="#EFF6F5" CornerRadius="9" Padding="14,12" VerticalAlignment="Bottom">
+              <TextBlock Text="{DynamicResource Text.ConnectionHelp}" Foreground="#42635F" FontSize="12" TextWrapping="Wrap" />
+            </Border>
+          </Grid>
+        </TabItem>
+        <TabItem Header="{DynamicResource Text.ReceiveTab}">
+          <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="16,16,16,4" RowSpacing="15">
+            <Grid ColumnDefinitions="*,110" ColumnSpacing="12">
+              <StackPanel Spacing="7"><TextBlock Text="{DynamicResource Text.ReceiveAddressLabel}" Classes="label" /><TextBox x:Name="ReceiveAddress" PlaceholderText="{DynamicResource Text.ReceiveAddressHint}" AutomationProperties.Name="{DynamicResource Text.ReceiveAddressAccessible}" /></StackPanel>
+              <StackPanel Grid.Column="1" Spacing="7"><TextBlock Text="{DynamicResource Text.Port}" Classes="label" /><TextBox x:Name="ReceivePort" Text="8787" AutomationProperties.Name="{DynamicResource Text.ReceivePortAccessible}" /></StackPanel>
+            </Grid>
+            <StackPanel Grid.Row="1" Spacing="7">
+              <TextBlock Text="{DynamicResource Text.SaveLocation}" Classes="label" />
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox x:Name="ReceiveDirectory" AutomationProperties.Name="{DynamicResource Text.SaveLocation}" /><Button Grid.Column="1" x:Name="DestinationButton" Content="{DynamicResource Text.ChooseFolder}" Click="ChooseDestination" /></Grid>
+            </StackPanel>
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
+              <Button x:Name="ReceiveButton" Classes="primary" Content="{DynamicResource Text.StartReceiving}" Click="StartReceiving" />
+              <Button Grid.Column="1" x:Name="StopReceiveButton" Content="{DynamicResource Text.StopReceiving}" IsEnabled="False" Click="StopReceiving" />
+              <TextBlock Grid.Column="2" x:Name="ReceiveState" Text="{DynamicResource Text.NotStarted}" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+            <StackPanel Grid.Row="3" Spacing="7">
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{DynamicResource Text.InvitationLabel}" Classes="label" VerticalAlignment="Center" /><Button Grid.Column="1" x:Name="CopyButton" Content="{DynamicResource Text.CopyCode}" IsEnabled="False" Click="CopyCode" /></Grid>
+              <TextBox x:Name="ReceiveCode" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="90" PlaceholderText="{DynamicResource Text.InvitationHint}" AutomationProperties.Name="{DynamicResource Text.InvitationAccessible}" />
+            </StackPanel>
+            <StackPanel Grid.Row="4" Spacing="8">
+              <TextBlock x:Name="ReceiveStatus" Text="{DynamicResource Text.WaitingToReceive}" TextTrimming="CharacterEllipsis" />
+              <ProgressBar x:Name="ReceiveProgress" Minimum="0" Maximum="100" Height="7" Foreground="#147D75" />
+              <TextBlock x:Name="ReceiveDetail" Text="{DynamicResource Text.ResumeHint}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+              <TextBlock x:Name="ReceiveEstimate" Text="{DynamicResource Text.ReceiveMetricsHint}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Grid.Row="5" Background="#EFF6F5" CornerRadius="9" Padding="14,12" VerticalAlignment="Bottom">
+              <TextBlock Text="{DynamicResource Text.ReceiveSafety}" Foreground="#42635F" FontSize="12" TextWrapping="Wrap" />
+            </Border>
+          </Grid>
+        </TabItem>
+      </TabControl>
+    </Border>
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto"><TextBlock x:Name="AppMessage" Text="{DynamicResource Text.Ready}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="790" HorizontalAlignment="Left" /><TextBlock Grid.Column="1" x:Name="VersionLabel" Classes="muted" FontSize="12" /></Grid>
+  </Grid>
+</Window>

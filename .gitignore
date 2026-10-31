@@ -1,0 +1,23 @@
+# Build output
+**/bin/
+**/obj/
+
+# Local documentation, planning, design history and release archives
+/docs/
+/DEVELOPMENT.md
+/branding/
+/publish/
+
+# Local IDE and OS files
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Local environment and transfer state
+.env
+.env.*
+.filebridge-parts/
