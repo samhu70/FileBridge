@@ -478,7 +478,7 @@
     <value>请把本机接收页的连接码发给对方，让对方选择“连接对方接收”并开始接收。</value>
   </data>
   <data name="ReverseSendPaused" xml:space="preserve">
-    <value>反向发送已暂停；再次点击“反向发送”后，对方可继续接收。</value>
+    <value>反向发送已暂停；再次点击“反向发送”后，保持接收的新版对方会自动重连续传。</value>
   </data>
   <data name="ReverseConnecting" xml:space="preserve">
     <value>正在连接提供文件的电脑</value>
@@ -490,7 +490,7 @@
     <value>全部反向接收文件校验通过。</value>
   </data>
   <data name="ReverseReceivePaused" xml:space="preserve">
-    <value>接收已暂停，点击“连接并接收”继续；如对方已暂停发送，请先让对方再次反向发送。</value>
+    <value>接收已暂停，请点击“连接并接收”继续。保持接收时，发送方暂停后重新反向发送会自动重连。</value>
   </data>
   <data name="Core.ReverseStartFirst" xml:space="preserve">
     <value>请先在接收页启动本机接收服务，再反向发送。</value>
@@ -527,5 +527,20 @@
   </data>
   <data name="Core.ReverseReadTimeout" xml:space="preserve">
     <value>接收数据等待超时，请重新连接。</value>
+  </data>
+  <data name="Core.WaitingForSender" xml:space="preserve">
+    <value>发送方已暂停或尚未就绪，等待自动续传</value>
+  </data>
+  <data name="Core.Reconnecting" xml:space="preserve">
+    <value>连接中断，正在自动重连</value>
+  </data>
+  <data name="SendTimeComplete" xml:space="preserve">
+    <value>对方已接收文件，校验通过</value>
+  </data>
+  <data name="SendTimeVerifying" xml:space="preserve">
+    <value>数据已发出，等待对方校验文件</value>
+  </data>
+  <data name="SendTimePaused" xml:space="preserve">
+    <value>当前文件预计剩余：已暂停</value>
   </data>
 </root>

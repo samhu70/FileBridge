@@ -17,31 +17,65 @@ public static class ReverseTransfer
     {
         if (parallelChunks is < 1 or > Wire.MaxParallelChunks) throw new ArgumentOutOfRangeException(nameof(parallelChunks));
         using var client = TransferSender.CreateClient(Invitation.Parse(code));
-        var offer = await ReadOfferAsync(client, ct);
-        await using var local = TransferReceiver.CreateLocal(directory, progress);
+        var reporting = new ReceivingProgress(progress);
+        var offer = await ReadReadyOfferAsync(client, reporting, null, ct);
+        await using var local = TransferReceiver.CreateLocal(directory, reporting);
         foreach (var manifest in offer.Files)
         {
-            for (var attempt = 0; ; attempt++)
+            for (var attempt = 0; ; attempt = Math.Min(attempt + 1, 4))
             {
                 try
                 {
                     if (attempt > 0)
                     {
-                        offer = await ReadOfferAsync(client, ct);
+                        offer = await ReadReadyOfferAsync(client, reporting, manifest, ct);
                         if (!offer.Files.Any(f => f.Id == manifest.Id))
                             throw new InvalidDataException("反向发送任务已变化，请重新连接。");
                     }
                     var streams = TransferSender.StreamsForSize(manifest.Size,
                         TransferSender.NegotiatedStreams(parallelChunks, offer.ParallelChunks));
-                    await DownloadAsync(client, offer.Id, manifest, local, streams, offer.ChunkSize, progress, ct);
+                    await DownloadAsync(client, offer.Id, manifest, local, streams, offer.ChunkSize, reporting, ct);
                     break;
                 }
-                catch (Exception error) when (attempt < 9 && TransferSender.Retryable(error, ct))
+                catch (Exception error) when (CanReconnect(error, ct))
                 {
-                    progress?.Report(new(manifest.Name, TransferStage.Retrying, Total: manifest.Size,
-                        ParallelChunks: 0, RetryAttempt: attempt + 1, RetryLimit: 10));
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct);
+                    reporting.Wait(manifest, OfferUnavailable(error));
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << attempt, 15)), ct);
                 }
+            }
+        }
+    }
+
+    // Keep the original manifests: a new offer ID may resume them, but cannot silently substitute other files.
+    private sealed class ReceivingProgress(IProgress<TransferProgress>? target) : IProgress<TransferProgress>
+    {
+        private TransferProgress? last;
+        public void Report(TransferProgress value) { last = value; target?.Report(value); }
+        public void Wait(FileManifest? manifest, bool senderPaused)
+        {
+            var previous = last?.FileName == manifest?.Name ? last : null;
+            Report((previous ?? new TransferProgress(manifest?.Name ?? "", TransferStage.WaitingForSender, Total: manifest?.Size ?? 0))
+                with { Stage = senderPaused ? TransferStage.WaitingForSender : TransferStage.Retrying,
+                    BytesPerSecond = 0, ParallelChunks = 0, RetryAttempt = 0, RetryLimit = 0 });
+        }
+    }
+
+    private static bool OfferUnavailable(Exception error) => error is TransferException { Status: 409 } e
+        && e.Message is "对方尚未准备反向发送文件，请让对方准备后重试。" or "反向发送任务已变化，请重新连接。";
+
+    private static bool CanReconnect(Exception error, CancellationToken ct) => !ct.IsCancellationRequested
+        && (OfferUnavailable(error) || TransferSender.Retryable(error, ct) || error is OperationCanceledException or HttpIOException);
+
+    private static async Task<ReverseOffer> ReadReadyOfferAsync(HttpClient client, ReceivingProgress progress,
+        FileManifest? manifest, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt = Math.Min(attempt + 1, 4))
+        {
+            try { return await ReadOfferAsync(client, ct); }
+            catch (Exception error) when (CanReconnect(error, ct))
+            {
+                progress.Wait(manifest, OfferUnavailable(error));
+                await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << attempt, 15)), ct);
             }
         }
     }
@@ -80,6 +114,7 @@ public static class ReverseTransfer
             var reportRead = await local.TrackLocalReadAsync(manifest.Id, ct);
             using var downloading = CancellationTokenSource.CreateLinkedTokenSource(ct);
             var pending = new List<Task>(streams);
+            Exception? failure = null;
             try
             {
                 var offset = state.Offset;
@@ -100,6 +135,7 @@ public static class ReverseTransfer
             {
                 downloading.Cancel();
                 try { await Task.WhenAll(pending); } catch { }
+                if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
                 throw;
             }
 
@@ -121,10 +157,12 @@ public static class ReverseTransfer
                     timeout.CancelAfter(Timeout.InfiniteTimeSpan);
                     await using var body = await response.Content.ReadAsStreamAsync(downloading.Token);
                     var bytes = new byte[count];
-                    await ReadChunkAsync(body, bytes, reportRead, TimeSpan.FromMinutes(5), downloading.Token);
+                    try { await ReadChunkAsync(body, bytes, reportRead, TimeSpan.FromMinutes(5), downloading.Token); }
+                    catch (IOException error) { throw new HttpRequestException("接收连接中断。", error); }
                     await local.WriteLocalAsync(manifest.Id, offset, bytes, hash!, downloading.Token, reportBytes: false);
                 }
-                catch { downloading.Cancel(); throw; }
+                catch (Exception error)
+                { Interlocked.CompareExchange(ref failure, error, null); downloading.Cancel(); throw; }
             }
             await local.FinishLocalAsync(manifest.Id, ct);
         }
@@ -189,9 +227,12 @@ public static class ReverseTransfer
         await using var stream = await content.ReadAsStreamAsync(ct);
         using var result = new MemoryStream();
         var buffer = new byte[8192];
-        int count;
-        while ((count = await stream.ReadAsync(buffer, ct)) > 0)
+        while (true)
         {
+            int count;
+            try { count = await stream.ReadAsync(buffer, ct); }
+            catch (IOException error) { throw new HttpRequestException("接收连接中断。", error); }
+            if (count == 0) break;
             if (result.Length + count > limit) throw new InvalidDataException("反向发送的文件列表过大，请分批选择。");
             result.Write(buffer, 0, count);
         }

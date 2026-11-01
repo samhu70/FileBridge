@@ -95,6 +95,14 @@ void ReceiveDisplayChecks()
     Check(TransferDisplay.ReceiveEstimate(progress with { Completed = progress.Total }, 1024, en) == en.Text("TimeVerifying"), "received data reported complete before verification");
     Check(TransferDisplay.ReceiveEstimate(progress with { Stage = TransferStage.VerifyingFile }, 0, en) == en.Text("TimeVerifying"), "verification ETA incorrect");
     Check(TransferDisplay.ReceiveEstimate(progress with { Stage = TransferStage.ReceiveComplete }, 0, zh) == zh.Text("TimeComplete"), "completion ETA incorrect");
+    Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.Sending }, 1024, en)
+        == "Time left (this file): about 10 s", "sender ETA missing");
+    Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.Sending, Completed = progress.Total }, 0, zh)
+        == zh.Text("SendTimeVerifying"), "sender claimed verification before peer receipt");
+    Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.SendComplete }, 0, en)
+        == en.Text("SendTimeComplete"), "sender verified ETA completion missing");
+    Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.Sending }, 0, zh)
+        == zh.Text("TimeWaiting"), "stale sender ETA retained");
     Check(TransferDisplay.ParallelMode(3, en) == "Parallel: on (3 streams)", "parallel mode not rendered");
     Check(TransferDisplay.ParallelMode(1, zh) == "并行：已关闭（1 路）", "single-stream mode not rendered");
     Check(TransferDisplay.ParallelMode(0, en) == en.Text("ParallelNegotiating"), "unnegotiated mode not rendered");

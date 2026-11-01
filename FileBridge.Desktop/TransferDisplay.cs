@@ -11,6 +11,7 @@ internal static class TransferDisplay
         TransferStage.CalculatingHash => language.Text("Core.CalculatingHash"),
         TransferStage.VerifyingResume => language.Text("Core.ResumeCheck"),
         TransferStage.WaitingForData => language.Text("Core.WaitingForData"),
+        TransferStage.WaitingForSender => language.Text("Core.WaitingForSender"),
         TransferStage.WaitingForPeer => language.Text("Core.WaitingForPeer"),
         TransferStage.Receiving => language.Text("Core.Receiving"),
         TransferStage.VerifyingFile => language.Text("Core.Verifying"),
@@ -19,7 +20,8 @@ internal static class TransferDisplay
         TransferStage.Sending => language.Text("Core.Sending"),
         TransferStage.SendComplete => language.Text("Core.SendVerified"),
         TransferStage.AlreadyComplete => language.Text("Core.AlreadyComplete"),
-        TransferStage.Retrying => language.Text("CorePrefix.Retry") + $"{progress.RetryAttempt}/{progress.RetryLimit}",
+        TransferStage.Retrying => progress.RetryLimit <= 0 ? language.Text("Core.Reconnecting")
+            : language.Text("CorePrefix.Retry") + $"{progress.RetryAttempt}/{progress.RetryLimit}",
         TransferStage.ReceiveError => language.Text("CorePrefix.ReceiveError") + language.CoreText(progress.Error ?? ""),
         _ => throw new ArgumentOutOfRangeException(nameof(progress), progress.Stage, "Unknown transfer stage.")
     };
@@ -42,6 +44,20 @@ internal static class TransferDisplay
         if (progress.Stage == TransferStage.ReceiveComplete) return language.Text("TimeComplete");
         if (progress.Stage != TransferStage.Receiving || speed <= 0 || !double.IsFinite(speed)) return language.Text("TimeWaiting");
         if (progress.Completed >= progress.Total) return language.Text("TimeVerifying");
+        return Remaining(progress, speed, language);
+    }
+
+    public static string SendEstimate(TransferProgress progress, double speed, Localization language)
+    {
+        if (progress.Stage is TransferStage.SendComplete or TransferStage.AlreadyComplete) return language.Text("SendTimeComplete");
+        if (progress.Stage != TransferStage.Sending) return language.Text("TimeWaiting");
+        if (progress.Completed >= progress.Total) return language.Text("SendTimeVerifying");
+        if (speed <= 0 || !double.IsFinite(speed)) return language.Text("TimeWaiting");
+        return Remaining(progress, speed, language);
+    }
+
+    private static string Remaining(TransferProgress progress, double speed, Localization language)
+    {
         var seconds = Math.Ceiling((progress.Total - progress.Completed) / speed);
         var duration = seconds >= 3600 ? language.Text("DurationHours", Math.Floor(seconds / 3600), Math.Floor(seconds % 3600 / 60))
             : seconds >= 60 ? language.Text("DurationMinutes", Math.Floor(seconds / 60), seconds % 60)

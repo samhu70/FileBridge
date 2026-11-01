@@ -16,6 +16,7 @@ public sealed partial class MainWindow : Window
     private CancellationTokenSource? sending;
     private TransferReceiver? receiver;
     private bool busy;
+    private bool sendPaused;
     private long lastSendUpdate;
     private long lastReceiveUpdate;
     private readonly Localization language = Localization.Current;
@@ -26,6 +27,7 @@ public sealed partial class MainWindow : Window
     private string messageKey = "Ready";
     private string? errorText, errorPrefix;
     private bool messageIsError;
+    private readonly DispatcherTimer sendTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer receiveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
     public MainWindow() : this(ConnectionStore.DefaultPath) { }
@@ -43,8 +45,9 @@ public sealed partial class MainWindow : Window
         ReceiveDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileBridge 接收");
         InitializeConnections();
         ApplyLanguage();
+        sendTimer.Tick += (_, _) => RenderSend();
         receiveTimer.Tick += (_, _) => { if (receiveProgress?.Stage == TransferStage.Receiving) RenderReceive(); };
-        Closed += (_, _) => { receiveTimer.Stop(); sending?.Cancel(); reverseReceiving?.Cancel(); _ = CloseReceiverAsync(); };
+        Closed += (_, _) => { sendTimer.Stop(); receiveTimer.Stop(); sending?.Cancel(); reverseReceiving?.Cancel(); _ = CloseReceiverAsync(); };
     }
     private string FormatBytes(long value) => TransferDisplay.Bytes(value, language.Culture);
 
@@ -83,19 +86,22 @@ public sealed partial class MainWindow : Window
             SendPercent.Text = "0%";
             SendStatus.Text = language.Text(sendState);
             SendDetail.Text = language.Text("ParallelHint");
+            SendEstimate.Text = language.Text("TimeWaiting");
             return;
         }
         var percent = p.Total > 0 ? 100.0 * p.Completed / p.Total : 0;
         SendStatus.Text = TransferDisplay.StageText(p, language) + (p.FileName.Length > 0 ? " · " + p.FileName : "");
         SendProgress.Value = percent;
         SendPercent.Text = percent.ToString("0.0", language.Culture) + "%";
+        var speed = TransferDisplay.ReceiveSpeed(p, busy && !sendPaused, Environment.TickCount64 - lastSendUpdate);
+        SendEstimate.Text = sendPaused ? language.Text("SendTimePaused") : TransferDisplay.SendEstimate(p, speed, language);
         if (p.Stage == TransferStage.WaitingForPeer)
         {
             SendDetail.Text = language.Text("ReverseOfferReadyDetail");
             return;
         }
         SendDetail.Text = $"{FormatBytes(p.Completed)} / {FormatBytes(p.Total)}"
-            + (p.BytesPerSecond > 0 ? $" · {FormatBytes((long)p.BytesPerSecond)}/s" : "")
+            + (speed > 0 ? $" · {FormatBytes((long)speed)}/s" : "")
             + " · " + TransferDisplay.ParallelMode(p.ParallelChunks, language);
     }
 
@@ -136,7 +142,8 @@ public sealed partial class MainWindow : Window
         if (progress.Stage == TransferStage.Receiving && now - lastReceiveUpdate < 100) return;
         lastReceiveUpdate = now;
         if (reverseReceiving is not null)
-            receiveState = progress.Stage == TransferStage.Retrying ? "ReverseConnecting" : "ReverseConnected";
+            receiveState = progress.Stage == TransferStage.WaitingForSender ? "Core.WaitingForSender"
+                : progress.Stage == TransferStage.Retrying ? "ReverseConnecting" : "ReverseConnected";
         receiveProgress = progress;
         RenderReceive();
     }
@@ -232,6 +239,7 @@ public sealed partial class MainWindow : Window
             if (reverse && receiver is null) throw new InvalidOperationException("请先在接收页启动本机接收服务，再反向发送。");
             if (!reverse) _ = Invitation.Parse(code);
             reverseSending = reverse;
+            sendPaused = false;
             busy = true;
             sending = new CancellationTokenSource();
             SetSendControls();
@@ -240,6 +248,7 @@ public sealed partial class MainWindow : Window
             var progress = new Progress<TransferProgress>(UpdateSendProgress);
             var files = rows.Select(r => r.File).ToList();
             var streams = StreamPicker.SelectedIndex + 1;
+            sendTimer.Start();
             if (reverse) await Task.Run(() => receiver!.SendReverseAsync(files, progress, sending.Token, streams));
             else await Task.Run(() => TransferSender.SendAsync(files, code, progress, sending.Token, streams));
             Message("SendComplete");
@@ -247,6 +256,7 @@ public sealed partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
+            sendPaused = true;
             Message(reverse ? "ReverseSendPaused" : "Paused");
             SetSendAction(reverse ? "StartSending" : "ContinueSending");
         }
@@ -260,8 +270,10 @@ public sealed partial class MainWindow : Window
         {
             busy = false;
             reverseSending = false;
+            sendTimer.Stop();
             sending?.Dispose();
             sending = null;
+            RenderSend();
             SetSendControls();
             SetReceiverControls();
         }

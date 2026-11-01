@@ -77,6 +77,7 @@
                 <Grid ColumnDefinitions="*,Auto"><TextBlock x:Name="SendStatus" Text="{DynamicResource Text.WaitingForFiles}" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" x:Name="SendPercent" Text="0%" FontWeight="SemiBold" /></Grid>
                 <ProgressBar x:Name="SendProgress" Minimum="0" Maximum="100" Height="7" Foreground="#147D75" />
                 <TextBlock x:Name="SendDetail" Text="{DynamicResource Text.ParallelHint}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock x:Name="SendEstimate" Text="{DynamicResource Text.TimeWaiting}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
               </StackPanel>
               <Border Grid.Row="5" Background="#EFF6F5" CornerRadius="9" Padding="14,12" VerticalAlignment="Bottom">
                 <TextBlock Text="{DynamicResource Text.ConnectionHelp}" Foreground="#42635F" FontSize="12" TextWrapping="Wrap" />

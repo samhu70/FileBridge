@@ -478,7 +478,7 @@
     <value>Share the code from this computer's Receive files page. The peer selects Receive from a shared computer to download your selected files.</value>
   </data>
   <data name="ReverseSendPaused" xml:space="preserve">
-    <value>Reverse sending paused. Choose Reverse send again, then the peer can resume receiving.</value>
+    <value>Reverse sending paused. Choose Reverse send again; an active receiver on the updated client will reconnect automatically.</value>
   </data>
   <data name="ReverseConnecting" xml:space="preserve">
     <value>Connecting to the computer offering files</value>
@@ -490,7 +490,7 @@
     <value>All received files passed SHA-256 verification.</value>
   </data>
   <data name="ReverseReceivePaused" xml:space="preserve">
-    <value>Receiving paused. Choose Connect and receive to resume. If the sender paused too, ask them to choose Reverse send again.</value>
+    <value>Receiving paused. Choose Connect and receive to resume. Sender pauses are handled automatically while receiving stays active.</value>
   </data>
   <data name="Core.ReverseStartFirst" xml:space="preserve">
     <value>Start receiving on this computer before reverse sending.</value>
@@ -527,5 +527,20 @@
   </data>
   <data name="Core.ReverseReadTimeout" xml:space="preserve">
     <value>Timed out waiting for more file data. Reconnect to resume.</value>
+  </data>
+  <data name="Core.WaitingForSender" xml:space="preserve">
+    <value>Sender paused or not ready; waiting to resume automatically</value>
+  </data>
+  <data name="Core.Reconnecting" xml:space="preserve">
+    <value>Connection interrupted; reconnecting automatically</value>
+  </data>
+  <data name="SendTimeComplete" xml:space="preserve">
+    <value>File received and verified by the peer</value>
+  </data>
+  <data name="SendTimeVerifying" xml:space="preserve">
+    <value>Data sent; waiting for the peer to verify the file</value>
+  </data>
+  <data name="SendTimePaused" xml:space="preserve">
+    <value>Time left (this file): paused</value>
   </data>
 </root>

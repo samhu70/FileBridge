@@ -267,11 +267,22 @@ internal static class UiChecks
             Check(Peer<TextBlock>("AppMessage").Text == Localization.Current.Text("ReverseReceivePaused"),
                 "reverse receive pause did not show resume guidance");
             PeerClick("ReceiveButton");
+            await Until(() => Peer<ProgressBar>("ReceiveProgress").Value > 0, "reverse progress before source pause");
+            Check(Host<TextBlock>("SendEstimate").Text != Localization.Current.Text("TimeWaiting"), "active sender ETA missing");
+            HostClick("PauseButton");
+            await Until(() => Host<Button>("ReverseSendButton").IsEnabled
+                && Peer<TextBlock>("ReceiveState").Text == Localization.Current.Text("Core.WaitingForSender"),
+                "peer automatic wait after sender pause");
+            Check(!Peer<Button>("ReceiveButton").IsEnabled && Peer<Button>("StopReceiveButton").IsEnabled,
+                "sender pause stopped the receiver or disabled cancelling its automatic wait");
+            Check(Host<TextBlock>("SendEstimate").Text == Localization.Current.Text("SendTimePaused"), "paused sender retained ETA");
+            HostClick("ReverseSendButton");
             await Until(() => Peer<Button>("ReceiveButton").IsEnabled && Peer<ProgressBar>("ReceiveProgress").Value == 100,
                 "reverse UI download completion");
             await Until(() => Host<Button>("SendButton").IsEnabled, "reverse source verified completion");
             Check(Peer<TextBlock>("ReceiveEstimate").Text?.Contains(TransferDisplay.ParallelMode(10, Localization.Current)) == true,
                 "reverse UI receiver ignored sender-selected ten streams");
+            Check(Host<TextBlock>("SendEstimate").Text == Localization.Current.Text("SendTimeComplete"), "sender verified completion ETA missing");
             Check(await Wire.FileHashAsync(Path.Combine(reverseDestination, "中文.bin"), default) == await Wire.FileHashAsync(source, default),
                 "reverse UI transfer checksum mismatch");
             Check(new ConnectionStore(peerSettings).Load().Identity is null, "reverse peer created a local listener identity");

@@ -16,7 +16,8 @@ public enum TransferStage
     AlreadyComplete,
     Retrying,
     ReceiveError,
-    WaitingForPeer
+    WaitingForPeer,
+    WaitingForSender
 }
 
 /// <summary>Local UI progress for one file; byte counts include verified resumed data.</summary>

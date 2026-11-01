@@ -144,6 +144,8 @@ internal static class ReverseChecks
                 "reverse corrupt prefix was not reset and repaired");
             Console.WriteLine("PASS reverse corrupt-prefix recovery / parallel ordered commits / final checksum");
 
+            await AutoResumeAsync(directory, host, restartedClient, files[0], manifest, ct);
+
             // An existing different final file is never overwritten, even by an authenticated offering peer.
             var conflict = Path.Combine(directory, "conflict");
             Directory.CreateDirectory(Path.Combine(conflict, "中文"));
@@ -186,6 +188,83 @@ internal static class ReverseChecks
         finally { await host.DisposeAsync(); }
     }
 
+    private static async Task AutoResumeAsync(string directory, TransferReceiver host, HttpClient client,
+        TransferFile source, FileManifest manifest, CancellationToken ct)
+    {
+        foreach (var mode in new[] { "resume", "changed", "cancel" })
+        {
+            using var sourcePause = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var receiverPause = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var offering = host.SendReverseAsync([source], null, sourcePause.Token, 1);
+            var oldOffer = await WaitForOfferAsync(client, ct);
+            var waiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var resumed = false;
+            var paused = false;
+            var destination = Path.Combine(directory, "auto-" + mode);
+            var receiving = ReverseTransfer.ReceiveAsync(host.Invitation.Encode(), destination, new InlineProgress(p =>
+            {
+                if (p.Stage == TransferStage.Receiving && p.Completed >= Wire.ReverseChunkSize && !paused)
+                { paused = true; sourcePause.Cancel(); }
+                if (p.Stage == TransferStage.WaitingForSender && paused)
+                {
+                    Check(p.Completed >= Wire.ReverseChunkSize && p.BytesPerSecond == 0, "waiting lost durable progress or retained speed");
+                    waiting.TrySetResult();
+                }
+                if (p.Stage == TransferStage.VerifyingResume && p.Completed >= Wire.ReverseChunkSize && p.ParallelChunks == 3)
+                    resumed = true;
+            }), receiverPause.Token);
+            await MustFail(() => offering, "source pause failed to withdraw its offer");
+            await waiting.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            Check(!receiving.IsCompleted, "sender pause ended the receiver instead of waiting");
+            var partial = Path.Combine(destination, Wire.PartsDirectory, manifest.Id + ".part");
+            var prefix = new FileInfo(partial).Length;
+            if (mode == "cancel")
+            {
+                receiverPause.Cancel();
+                var cancelled = false;
+                try { await receiving; }
+                catch (OperationCanceledException) when (receiverPause.IsCancellationRequested) { cancelled = true; }
+                Check(cancelled && new FileInfo(partial).Length == prefix, "receiver pause did not cancel automatic waiting safely");
+                continue;
+            }
+            using var newPause = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var nextSource = source;
+            if (mode == "changed")
+            {
+                var changed = Path.Combine(directory, "changed-source.bin");
+                await File.WriteAllTextAsync(changed, "different contents with the same offered name", ct);
+                nextSource = new(changed, source.RelativeName, new FileInfo(changed).Length);
+            }
+            offering = host.SendReverseAsync([nextSource], null, newPause.Token, 3);
+            var nextOffer = await WaitForOfferAsync(client, ct);
+            Check(nextOffer.Id != oldOffer.Id, "test did not replace the offer identity");
+            if (mode == "changed")
+            {
+                var rejected = false;
+                try { await receiving; }
+                catch (InvalidDataException) { rejected = true; }
+                Check(rejected && new FileInfo(partial).Length == prefix && !File.Exists(Path.Combine(destination, manifest.Name)),
+                    "automatic reconnect accepted a substituted manifest or changed its prefix");
+                newPause.Cancel();
+                await MustFail(() => offering, "changed offer stayed active after cancellation");
+            }
+            else
+            {
+                await Task.WhenAll(receiving, offering).WaitAsync(ct);
+                Check(resumed && await Wire.FileHashAsync(Path.Combine(destination, manifest.Name), ct) == manifest.Hash,
+                    "receiver did not automatically resume the original manifest with checksum after reoffer");
+            }
+        }
+        using var idlePause = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var idleWaiting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var idle = ReverseTransfer.ReceiveAsync(host.Invitation.Encode(), Path.Combine(directory, "initial-wait"),
+            new InlineProgress(p => { if (p.Stage == TransferStage.WaitingForSender) idleWaiting.TrySetResult(); }), idlePause.Token);
+        await idleWaiting.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+        var initialOffer = host.SendReverseAsync([source], null, ct, 1);
+        await Task.WhenAll(idle, initialOffer).WaitAsync(ct);
+        Console.WriteLine("PASS reverse automatic wait/reoffer resume / durable prefix and renegotiation / receiver pause / changed manifest rejection / connect before sender ready");
+    }
+
     private static async Task<ReverseOffer> WaitForOfferAsync(HttpClient client, CancellationToken ct)
     {
         for (var i = 0; i < 500; i++)
@@ -217,6 +296,15 @@ internal static class ReverseChecks
             {
                 if (mode == "old") { context.Response.StatusCode = 404; return; }
                 if (mode == "retry" && receiptFailed) { context.Response.StatusCode = 409; return; }
+                if (mode == "disconnect-list" && !failedOnce)
+                {
+                    failedOnce = true;
+                    context.Response.ContentLength = 1000;
+                    await context.Response.Body.WriteAsync(new byte[] { (byte)'{' }, ct);
+                    await context.Response.Body.FlushAsync(ct);
+                    context.Abort();
+                    return;
+                }
                 await context.Response.WriteAsJsonAsync(new ReverseOffer(offerId,
                     [mode == "path" ? manifest with { Name = "../escape.bin" } : manifest], 1), ct);
             }
@@ -229,6 +317,14 @@ internal static class ReverseChecks
                 if (mode == "whole") chunk[0] ^= 0xff;
                 context.Response.ContentLength = chunk.Length;
                 context.Response.Headers["X-Chunk-SHA256"] = mode == "chunk" ? new string('0', 64) : Wire.Hash(chunk);
+                if (mode == "disconnect" && !failedOnce)
+                {
+                    failedOnce = true;
+                    await context.Response.Body.WriteAsync(chunk.AsMemory(0, 65536), ct);
+                    await context.Response.Body.FlushAsync(ct);
+                    context.Abort();
+                    return;
+                }
                 if (mode == "slow")
                 {
                     for (var position = 0; position < chunk.Length; position += 65536)
@@ -272,6 +368,20 @@ internal static class ReverseChecks
             "reverse transient network failure did not retry from the verified prefix");
         Check(receiptFailed, "completion receipt retry was not exercised");
         Console.WriteLine("PASS reverse transient HTTP failure / automatic retry / verified prefix reuse / final receipt retry after offer withdrawal");
+        mode = "disconnect";
+        failedOnce = false;
+        var disconnectedDestination = Path.Combine(directory, "disconnected-received");
+        await ReverseTransfer.ReceiveAsync(invite.Encode(), disconnectedDestination, null, ct);
+        Check(failedOnce && await Wire.FileHashAsync(Path.Combine(disconnectedDestination, manifest.Name), ct) == manifest.Hash,
+            "an interrupted response body did not automatically reconnect and verify the file");
+        Console.WriteLine("PASS reverse interrupted response body / automatic reconnect / final checksum");
+        mode = "disconnect-list";
+        failedOnce = false;
+        var disconnectedList = Path.Combine(directory, "disconnected-list-received");
+        await ReverseTransfer.ReceiveAsync(invite.Encode(), disconnectedList, null, ct);
+        Check(failedOnce && await Wire.FileHashAsync(Path.Combine(disconnectedList, manifest.Name), ct) == manifest.Hash,
+            "an interrupted offer response did not reconnect and verify the file");
+        Console.WriteLine("PASS reverse interrupted offer response / initial reconnect / final checksum");
         mode = "slow";
         var reading = new List<TransferProgress>();
         var slowDestination = Path.Combine(directory, "slow-received");
