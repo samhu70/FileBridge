@@ -93,15 +93,17 @@ public sealed partial class MainWindow : Window
         SendStatus.Text = TransferDisplay.StageText(p, language) + (p.FileName.Length > 0 ? " · " + p.FileName : "");
         SendProgress.Value = percent;
         SendPercent.Text = percent.ToString("0.0", language.Culture) + "%";
-        var speed = TransferDisplay.ReceiveSpeed(p, busy && !sendPaused, Environment.TickCount64 - lastSendUpdate);
-        SendEstimate.Text = sendPaused ? language.Text("SendTimePaused") : TransferDisplay.SendEstimate(p, speed, language);
+        var idle = Environment.TickCount64 - lastSendUpdate;
+        var speed = TransferDisplay.SendSpeed(p, busy && !sendPaused, idle);
+        var recent = speed > 0 && idle >= 5000;
+        SendEstimate.Text = sendPaused ? language.Text("SendTimePaused") : TransferDisplay.SendEstimate(p, speed, language, recent);
         if (p.Stage == TransferStage.WaitingForPeer)
         {
             SendDetail.Text = language.Text("ReverseOfferReadyDetail");
             return;
         }
         SendDetail.Text = $"{FormatBytes(p.Completed)} / {FormatBytes(p.Total)}"
-            + (speed > 0 ? $" · {FormatBytes((long)speed)}/s" : "")
+            + (speed > 0 ? " · " + (recent ? language.Text("SendRecentSpeed", FormatBytes((long)speed) + "/s") : FormatBytes((long)speed) + "/s") : "")
             + " · " + TransferDisplay.ParallelMode(p.ParallelChunks, language);
     }
 

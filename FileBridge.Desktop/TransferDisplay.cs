@@ -35,6 +35,11 @@ internal static class TransferDisplay
     public static double ReceiveSpeed(TransferProgress progress, bool active, long idleMilliseconds) =>
         active && idleMilliseconds < 5000 && double.IsFinite(progress.BytesPerSecond) ? Math.Max(0, progress.BytesPerSecond) : 0;
 
+    // Chunk/batch reports can be far apart on a slow sender; retain recent estimates up to the protocol idle deadline.
+    public static double SendSpeed(TransferProgress progress, bool active, long idleMilliseconds) =>
+        active && progress.Stage == TransferStage.Sending && idleMilliseconds < 5 * 60_000
+            && double.IsFinite(progress.BytesPerSecond) ? Math.Max(0, progress.BytesPerSecond) : 0;
+
     public static string ParallelMode(int streams, Localization language) => streams <= 0 ? language.Text("ParallelNegotiating")
         : streams == 1 ? language.Text("ParallelDisabled") : language.Text("ParallelEnabled", streams);
 
@@ -47,21 +52,21 @@ internal static class TransferDisplay
         return Remaining(progress, speed, language);
     }
 
-    public static string SendEstimate(TransferProgress progress, double speed, Localization language)
+    public static string SendEstimate(TransferProgress progress, double speed, Localization language, bool recent = false)
     {
         if (progress.Stage is TransferStage.SendComplete or TransferStage.AlreadyComplete) return language.Text("SendTimeComplete");
         if (progress.Stage != TransferStage.Sending) return language.Text("TimeWaiting");
         if (progress.Completed >= progress.Total) return language.Text("SendTimeVerifying");
         if (speed <= 0 || !double.IsFinite(speed)) return language.Text("TimeWaiting");
-        return Remaining(progress, speed, language);
+        return Remaining(progress, speed, language, recent ? "SendTimeRemainingRecent" : "TimeRemaining");
     }
 
-    private static string Remaining(TransferProgress progress, double speed, Localization language)
+    private static string Remaining(TransferProgress progress, double speed, Localization language, string key = "TimeRemaining")
     {
         var seconds = Math.Ceiling((progress.Total - progress.Completed) / speed);
         var duration = seconds >= 3600 ? language.Text("DurationHours", Math.Floor(seconds / 3600), Math.Floor(seconds % 3600 / 60))
             : seconds >= 60 ? language.Text("DurationMinutes", Math.Floor(seconds / 60), seconds % 60)
             : language.Text("DurationSeconds", Math.Max(1, seconds));
-        return language.Text("TimeRemaining", duration);
+        return language.Text(key, duration);
     }
 }

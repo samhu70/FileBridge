@@ -11,13 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.6 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.6/FileBridge-windows-x64-2.5.6-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.6 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.6/FileBridge-macOS-arm64-2.5.6-framework-dependent.zip) |
-| SHA-256 | 2.5.6 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.6/SHA256SUMS-2.5.6.txt) |
+| Windows x64 | 2.5.7 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.7/FileBridge-windows-x64-2.5.7-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.7 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.7/FileBridge-macOS-arm64-2.5.7-framework-dependent.zip) |
+| SHA-256 | 2.5.7 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.7/SHA256SUMS-2.5.7.txt) |
 
-**2.5.6 支持反向传输自动续连和发送剩余时间**：接收端保持接收时，发送方暂停后重新反向发送会自动连接并校验断点；接收方主动暂停仍会停止自动重连。同名但内容变化的任务不会被自动替换接收。发送端新增当前文件预计剩余时间、暂停和等待对方校验状态。保留最多 10 路、256 KiB 分块和 SHA-256 校验。接收方需升级至 2.5.6；发布包由 `v2.5.6` 标签对应源码构建。
+**2.5.7 修复慢速发送时剩余时间反复消失的问题**：发送端不再套用接收端的五秒清空规则；进度更新间隙显示「最近速度」和「按最近速度估算」的剩余时间，超过五分钟无更新才失效，暂停立即停止估算。保留自动重连续传、最多 10 路和 SHA-256 校验。发布包由 `v2.5.7` 标签对应源码构建。
 
-**2.5.6 adds automatic reverse reconnect/resume and sender ETA:** an active receiver waits across sender pauses and resumes the original file manifests after a new reverse offer, checking the durable prefix. Receiver-initiated pause still stops reconnecting; changed file contents are rejected. The sender shows per-file time left, pause and pending peer verification. Keeps up to ten streams, 256 KiB blocks and SHA-256. Upgrade the receiving peer to 2.5.6. Downloads are built from `v2.5.6`.
+**2.5.7 keeps sender ETA visible between sparse updates on slow links:** after five seconds, the sender labels recent speed and estimated time based on it, retaining the sample up to the five-minute idle deadline. Pausing clears the estimate immediately. Receiver live-speed expiry, automatic reverse resume, ten streams and SHA-256 are preserved. Downloads are built from `v2.5.7`.
 
 ## 中文
 
@@ -62,7 +62,7 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 
 ### 反向传输
 
-反向传输要求双方运行 2.5.3 或更新版本；建议双方升级至 2.5.6，以获得小分块、慢链路修复和最多 10 路的反向接收。只需提供文件的电脑可被对方访问，对方无需反向共享自己的电脑。
+反向传输要求双方运行 2.5.3 或更新版本；建议双方升级至 2.5.7，以获得小分块、慢链路修复和最多 10 路的反向接收。只需提供文件的电脑可被对方访问，对方无需反向共享自己的电脑。
 
 1. **你已共享的电脑**：在「接收文件」页按原方式启动接收服务，保留这台电脑的连接码。
 2. **你发文件给对方**：在「发送文件」页选择文件或文件夹，点击「反向发送」。无需输入对方连接码；仅本次选中的文件会在发送期间提供给持码者。
@@ -145,14 +145,14 @@ After restarting the receiver, select **Start receiving** to reuse the saved cod
 
 ### Reverse transfers
 
-Both peers must run 2.5.3 or newer; upgrade both to 2.5.6 for smaller blocks, slow-link fixes, and reverse receiving up to ten streams. Only the computer offering files needs to be reachable; the downloading peer does not need to share its own computer.
+Both peers must run 2.5.3 or newer; upgrade both to 2.5.7 for smaller blocks, slow-link fixes, and reverse receiving up to ten streams. Only the computer offering files needs to be reachable; the downloading peer does not need to share its own computer.
 
 1. **On your shared computer:** start receiving as usual and keep its connection code.
 2. **To send files back to the other person:** select files or a folder on **Send files**, then choose **Reverse send**. Their code is not required. Only explicitly selected files are offered during this operation.
 3. **On the other computer:** select **Receive from a shared computer (no local sharing)** on **Receive files**, paste your code, choose a save location, and select **Connect and receive**. This computer only makes outgoing connections and needs no share or listening service.
 4. **To send files to your shared computer:** the other person continues to use the original **Send files** action with the same code.
 
-Pause and resume keep the verified contiguous prefix in `.filebridge-parts`. New peers prefer 256 KiB blocks. Progress counts verified, flushed bytes; speed includes in-flight network reads. Continuously progressing reads are not cut off by a five-minute total duration limit; inactivity triggers retries. If the source pauses, choose **Reverse send** again; an active 2.5.6 receiver waits and reconnects automatically, verifying the saved prefix. Receiver-initiated pause stops this waiting until explicitly resumed. A changed file manifest is rejected without replacing the saved partial. After a source restart, start its receive service again and reselect the original files; the peer reconnects and verifies its saved prefix before resuming. Corrupt prefixes are retransferred, chunks are verified before durable writes, and final files are SHA-256 checked before completion. Completion or cancellation withdraws file downloads; existing invitations and direct transfers stay compatible.
+Pause and resume keep the verified contiguous prefix in `.filebridge-parts`. New peers prefer 256 KiB blocks. Progress counts verified, flushed bytes; speed includes in-flight network reads. Continuously progressing reads are not cut off by a five-minute total duration limit; inactivity triggers retries. If the source pauses, choose **Reverse send** again; an active 2.5.7 receiver waits and reconnects automatically, verifying the saved prefix. Receiver-initiated pause stops this waiting until explicitly resumed. A changed file manifest is rejected without replacing the saved partial. After a source restart, start its receive service again and reselect the original files; the peer reconnects and verifies its saved prefix before resuming. Corrupt prefixes are retransferred, chunks are verified before durable writes, and final files are SHA-256 checked before completion. Completion or cancellation withdraws file downloads; existing invitations and direct transfers stay compatible.
 
 ### Saved codes and manual changes
 

@@ -543,4 +543,10 @@
   <data name="SendTimePaused" xml:space="preserve">
     <value>当前文件预计剩余：已暂停</value>
   </data>
+  <data name="SendTimeRemainingRecent" xml:space="preserve">
+    <value>当前文件预计剩余（按最近速度估算）：约 {0}</value>
+  </data>
+  <data name="SendRecentSpeed" xml:space="preserve">
+    <value>最近速度：{0}</value>
+  </data>
 </root>

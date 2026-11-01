@@ -269,6 +269,18 @@ internal static class UiChecks
             PeerClick("ReceiveButton");
             await Until(() => Peer<ProgressBar>("ReceiveProgress").Value > 0, "reverse progress before source pause");
             Check(Host<TextBlock>("SendEstimate").Text != Localization.Current.Text("TimeWaiting"), "active sender ETA missing");
+            var sendStamp = typeof(MainWindow).GetField("lastSendUpdate", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var renderSend = typeof(MainWindow).GetMethod("RenderSend", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var originalStamp = sendStamp.GetValue(reverseHost);
+            sendStamp.SetValue(reverseHost, Environment.TickCount64 - 6000);
+            renderSend.Invoke(reverseHost, null);
+            Check(Host<TextBlock>("SendEstimate").Text?.StartsWith(Localization.Current.Text("SendTimeRemainingRecent", "")) == true
+                && Host<TextBlock>("SendDetail").Text?.Contains(Localization.Current.Text("SendRecentSpeed", "")) == true,
+                "sparse sender progress lost ETA instead of showing a recent estimate");
+            sendStamp.SetValue(reverseHost, Environment.TickCount64 - 300000);
+            renderSend.Invoke(reverseHost, null);
+            Check(Host<TextBlock>("SendEstimate").Text == Localization.Current.Text("TimeWaiting"), "expired sender estimate did not clear");
+            sendStamp.SetValue(reverseHost, originalStamp);
             HostClick("PauseButton");
             await Until(() => Host<Button>("ReverseSendButton").IsEnabled
                 && Peer<TextBlock>("ReceiveState").Text == Localization.Current.Text("Core.WaitingForSender"),

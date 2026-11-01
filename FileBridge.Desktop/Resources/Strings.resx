@@ -543,4 +543,10 @@
   <data name="SendTimePaused" xml:space="preserve">
     <value>Time left (this file): paused</value>
   </data>
+  <data name="SendTimeRemainingRecent" xml:space="preserve">
+    <value>Time left (this file, based on recent speed): about {0}</value>
+  </data>
+  <data name="SendRecentSpeed" xml:space="preserve">
+    <value>Recent speed: {0}</value>
+  </data>
 </root>

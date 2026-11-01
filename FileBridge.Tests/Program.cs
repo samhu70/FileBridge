@@ -88,6 +88,13 @@ void ReceiveDisplayChecks()
     Check(TransferDisplay.ReceiveSpeed(progress, true, 5000) == 0, "stale receive speed retained");
     Check(TransferDisplay.ReceiveSpeed(progress, false, 0) == 0, "stopped receiver retained speed");
     Check(TransferDisplay.ReceiveSpeed(progress with { BytesPerSecond = double.NaN }, true, 0) == 0, "invalid speed accepted");
+    var sendingSample = progress with { Stage = TransferStage.Sending };
+    Check(TransferDisplay.SendSpeed(sendingSample, true, 6000) == 1024,
+        "sparse sender progress lost speed and ETA after five seconds despite an active send");
+    Check(TransferDisplay.SendSpeed(sendingSample, false, 0) == 0, "paused sender retained speed");
+    Check(TransferDisplay.SendSpeed(sendingSample, true, 300000) == 0, "sender retained an expired sample beyond the protocol idle deadline");
+    Check(TransferDisplay.SendSpeed(sendingSample with { BytesPerSecond = double.NaN }, true, 0) == 0,
+        "sender accepted invalid speed");
     Check(TransferDisplay.ReceiveEstimate(progress, 1024, en) == "Time left (this file): about 10 s", "receive seconds incorrect");
     Check(TransferDisplay.ReceiveEstimate(progress with { Total = 66 * 1024 }, 1024, en).EndsWith("1 min 5 s"), "receive minutes incorrect");
     Check(TransferDisplay.ReceiveEstimate(progress with { Total = 3666 * 1024 }, 1024, en).EndsWith("1 h 1 min"), "receive hours incorrect");
@@ -97,6 +104,8 @@ void ReceiveDisplayChecks()
     Check(TransferDisplay.ReceiveEstimate(progress with { Stage = TransferStage.ReceiveComplete }, 0, zh) == zh.Text("TimeComplete"), "completion ETA incorrect");
     Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.Sending }, 1024, en)
         == "Time left (this file): about 10 s", "sender ETA missing");
+    Check(TransferDisplay.SendEstimate(sendingSample, 1024, en, recent: true)
+        == "Time left (this file, based on recent speed): about 10 s", "recent sender estimate was not labelled honestly");
     Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.Sending, Completed = progress.Total }, 0, zh)
         == zh.Text("SendTimeVerifying"), "sender claimed verification before peer receipt");
     Check(TransferDisplay.SendEstimate(progress with { Stage = TransferStage.SendComplete }, 0, en)
