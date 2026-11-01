@@ -17,6 +17,7 @@ internal static class ReverseChecks
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         var ct = timeout.Token;
         await SlowReadChecksAsync(ct);
+        await TenConcurrentRequestsAsync(root, ct);
         var directory = Path.Combine(root, "reverse");
         Directory.CreateDirectory(directory);
         var source = Path.Combine(directory, "source.bin");
@@ -81,6 +82,24 @@ internal static class ReverseChecks
             using (var receipt = await client.PostAsync($"v3/reverse/complete?offer={offer.Id}&id={manifest.Id}", null, ct))
                 Check(receipt.IsSuccessStatusCode, "completion receipt retry failed");
             Console.WriteLine("PASS reverse real HTTPS / bidirectional single endpoint / Unicode and empty files / TLS and token / selected files only / idempotent completion");
+
+            var tenStreamSource = Path.Combine(directory, "ten-streams.bin");
+            await using (var file = File.Create(tenStreamSource)) file.SetLength(Wire.ChunkSize * 10L);
+            var tenStreamEvents = new List<TransferProgress>();
+            offering = host.SendReverseAsync([new(tenStreamSource, "ten-streams.bin", Wire.ChunkSize * 10L)], null, ct, 10);
+            await WaitForOfferAsync(client, ct);
+            var tenStreamDestination = Path.Combine(directory, "ten-streams-received");
+            await ReverseTransfer.ReceiveAsync(code, tenStreamDestination,
+                new InlineProgress(p =>
+                {
+                    tenStreamEvents.Add(p);
+                    Check(p.ParallelChunks == 10, "default reverse receive still caps sender-selected ten streams");
+                }), ct);
+            await offering.WaitAsync(ct);
+            Check(tenStreamEvents.Any(p => p.Stage == TransferStage.ReceiveComplete)
+                && await Wire.FileHashAsync(Path.Combine(tenStreamDestination, "ten-streams.bin"), ct)
+                    == await Wire.FileHashAsync(tenStreamSource, ct), "ten-stream reverse transfer did not complete with checksum");
+            Console.WriteLine("PASS reverse default follows sender-selected ten streams / explicit lower receiver cap / final checksum");
 
             var resumeDirectory = Path.Combine(directory, "resumed");
             using var pausedOffer = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -261,6 +280,53 @@ internal static class ReverseChecks
             && await Wire.FileHashAsync(Path.Combine(slowDestination, manifest.Name), ct) == manifest.Hash,
             "slow network reads were hidden until a whole chunk was committed");
         Console.WriteLine("PASS reverse slow HTTPS / in-flight speed before first verified chunk / final checksum");
+    }
+
+    private static async Task TenConcurrentRequestsAsync(string directory, CancellationToken ct)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+        ct = deadline.Token;
+        var identity = ReceiverIdentity.Create();
+        using var certificate = identity.LoadCertificate();
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.Logging.ClearProviders();
+        builder.WebHost.ConfigureKestrel(o => o.Listen(IPAddress.Loopback, 0, l => l.UseHttps(certificate)));
+        await using var server = builder.Build();
+        var bytes = new byte[Wire.ChunkSize * 10];
+        var manifest = new FileManifest("ten-concurrent.bin", bytes.Length, Wire.Hash(bytes));
+        var offerId = new string('b', 64);
+        var firstWave = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = 0;
+        server.Run(async context =>
+        {
+            if (context.Request.Path == "/v3/reverse/list")
+                await context.Response.WriteAsJsonAsync(new ReverseOffer(offerId, [manifest], 10, Wire.ReverseChunkSize), ct);
+            else if (context.Request.Path == "/v3/reverse/chunk")
+            {
+                Check(context.Request.Query["parallelChunks"] == "10", "reverse chunk request did not negotiate ten streams");
+                // No first-wave response can finish until all ten requests reach the server together.
+                if (Interlocked.Increment(ref started) == 10) firstWave.TrySetResult();
+                await firstWave.Task.WaitAsync(ct);
+                var offset = int.Parse(context.Request.Query["offset"]!);
+                var length = int.Parse(context.Request.Query["length"]!);
+                var chunk = bytes.AsMemory(offset, length);
+                context.Response.ContentLength = length;
+                context.Response.Headers["X-Chunk-SHA256"] = Wire.Hash(chunk.Span);
+                await context.Response.Body.WriteAsync(chunk, ct);
+            }
+            else if (context.Request.Path == "/v3/reverse/complete")
+                await context.Response.WriteAsJsonAsync(new ResumeState(bytes.Length, "", true, 10), ct);
+            else context.Response.StatusCode = 404;
+        });
+        await server.StartAsync(ct);
+        var invite = identity.InvitationFor("127.0.0.1", new Uri(server.Urls.Single()).Port);
+        var destination = Path.Combine(directory, "ten-concurrent");
+        await ReverseTransfer.ReceiveAsync(invite.Encode(), destination, null, ct);
+        Check(firstWave.Task.IsCompletedSuccessfully && started == bytes.Length / Wire.ReverseChunkSize
+            && await Wire.FileHashAsync(Path.Combine(destination, manifest.Name), ct) == manifest.Hash,
+            "default reverse receiver did not complete ten simultaneous HTTPS requests with checksum");
+        Console.WriteLine("PASS reverse ten simultaneous HTTPS requests / default receiver follows sender / final checksum");
     }
 
     private static async Task SlowReadChecksAsync(CancellationToken ct)

@@ -11,9 +11,9 @@ public static class ReverseTransfer
     /// <param name="directory">Local destination; existing different files and unsafe paths are protected.</param>
     /// <param name="progress">Receiving, verification and reconnection progress.</param>
     /// <param name="ct">Pauses downloading while preserving verified partial files.</param>
-    /// <param name="parallelChunks">Concurrent chunk limit, from one to ten.</param>
+    /// <param name="parallelChunks">Receiver safety cap, from one to ten; defaults to allowing the sender's selected limit.</param>
     public static async Task ReceiveAsync(string code, string directory, IProgress<TransferProgress>? progress,
-        CancellationToken ct, int parallelChunks = Wire.DefaultParallelChunks)
+        CancellationToken ct, int parallelChunks = Wire.MaxParallelChunks)
     {
         if (parallelChunks is < 1 or > Wire.MaxParallelChunks) throw new ArgumentOutOfRangeException(nameof(parallelChunks));
         using var client = TransferSender.CreateClient(Invitation.Parse(code));

@@ -11,13 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.4 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.4/FileBridge-windows-x64-2.5.4-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.4 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.4/FileBridge-macOS-arm64-2.5.4-framework-dependent.zip) |
-| SHA-256 | 2.5.4 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.4/SHA256SUMS-2.5.4.txt) |
+| Windows x64 | 2.5.5 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.5/FileBridge-windows-x64-2.5.5-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.5 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.5/FileBridge-macOS-arm64-2.5.5-framework-dependent.zip) |
+| SHA-256 | 2.5.5 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.5/SHA256SUMS-2.5.5.txt) |
 
-**2.5.4 修复反向传输的慢链路停顿**：优先采用 256 KiB 小分块，接收超时按连续无数据时间计算，显示实际读取速度，并正确显示「等待对方接收」。保留续传、SHA-256 校验及旧版四 MiB 分块兼容。建议双方升级至 2.5.4。发布包由 `v2.5.4` 标签对应源码构建。
+**2.5.5 修复反向接收默认被限制为 4 路的问题**：接收端自动跟随发送端选择的并发上限，最多 10 路；小文件仍按大小适配。保留 256 KiB 分块、慢链路空闲超时、断点续传和 SHA-256 校验。要让发送端选择的 10 路生效，接收方必须升级至 2.5.5。发布包由 `v2.5.5` 标签对应源码构建。
 
-**2.5.4 fixes reverse transfers on slow links:** preferred 256 KiB blocks, inactivity-based body read deadlines, live receiving-speed telemetry, and a correct Waiting for receiver state. Resume, SHA-256 verification, and legacy four-MiB reverse blocks remain compatible. Upgrade both peers to 2.5.4 for the complete fix. Downloads are built from `v2.5.4`.
+**2.5.5 removes the default four-stream cap on reverse receiving:** receivers follow the sender’s selected concurrency, up to ten streams, while adapting smaller files by size. Keeps 256 KiB blocks, inactivity deadlines, durable resume and SHA-256 checks. The receiving peer must upgrade to 2.5.5 to honor a ten-stream selection. Downloads are built from `v2.5.5`.
 
 ## 中文
 
@@ -62,7 +62,7 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 
 ### 反向传输
 
-反向传输要求双方运行 2.5.3 或更新版本；建议双方升级至 2.5.4，以获得小分块和慢链路修复。只需提供文件的电脑可被对方访问，对方无需反向共享自己的电脑。
+反向传输要求双方运行 2.5.3 或更新版本；建议双方升级至 2.5.5，以获得小分块、慢链路修复和最多 10 路的反向接收。只需提供文件的电脑可被对方访问，对方无需反向共享自己的电脑。
 
 1. **你已共享的电脑**：在「接收文件」页按原方式启动接收服务，保留这台电脑的连接码。
 2. **你发文件给对方**：在「发送文件」页选择文件或文件夹，点击「反向发送」。无需输入对方连接码；仅本次选中的文件会在发送期间提供给持码者。
@@ -145,7 +145,7 @@ After restarting the receiver, select **Start receiving** to reuse the saved cod
 
 ### Reverse transfers
 
-Both peers must run 2.5.3 or newer; upgrade both to 2.5.4 for smaller blocks and the slow-link fixes. Only the computer offering files needs to be reachable; the downloading peer does not need to share its own computer.
+Both peers must run 2.5.3 or newer; upgrade both to 2.5.5 for smaller blocks, slow-link fixes, and reverse receiving up to ten streams. Only the computer offering files needs to be reachable; the downloading peer does not need to share its own computer.
 
 1. **On your shared computer:** start receiving as usual and keep its connection code.
 2. **To send files back to the other person:** select files or a folder on **Send files**, then choose **Reverse send**. Their code is not required. Only explicitly selected files are offered during this operation.

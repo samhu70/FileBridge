@@ -238,6 +238,8 @@ internal static class UiChecks
             Host<TextBox>("ReceiveDirectory").Text = Path.Combine(Root, "reverse-host-received");
             HostClick("ReceiveButton");
             await Until(() => Host<Button>("StopReceiveButton").IsEnabled, "reverse host listener startup");
+            await using (var file = File.Create(source)) file.SetLength(Wire.ChunkSize * 10L);
+            Host<ComboBox>("StreamPicker").SelectedIndex = 9;
             await reverseHost.AddPathsAsync([source]);
             HostClick("ReverseSendButton");
             await Until(() => Host<TextBlock>("SendStatus").Text == Localization.Current.Text("Core.WaitingForPeer"),
@@ -268,6 +270,8 @@ internal static class UiChecks
             await Until(() => Peer<Button>("ReceiveButton").IsEnabled && Peer<ProgressBar>("ReceiveProgress").Value == 100,
                 "reverse UI download completion");
             await Until(() => Host<Button>("SendButton").IsEnabled, "reverse source verified completion");
+            Check(Peer<TextBlock>("ReceiveEstimate").Text?.Contains(TransferDisplay.ParallelMode(10, Localization.Current)) == true,
+                "reverse UI receiver ignored sender-selected ten streams");
             Check(await Wire.FileHashAsync(Path.Combine(reverseDestination, "中文.bin"), default) == await Wire.FileHashAsync(source, default),
                 "reverse UI transfer checksum mismatch");
             Check(new ConnectionStore(peerSettings).Load().Identity is null, "reverse peer created a local listener identity");
