@@ -49,6 +49,7 @@ internal static class UiChecks
                     System.Globalization.CultureInfo.GetCultureInfo(language));
                 window.Resources["Text.SendTab"] = text.Text("SendTab");
                 window.Resources["Text.ReceiveTab"] = text.Text("ReceiveTab");
+                window.Resources["Text.OpenReceiveDirectory"] = text.Text("OpenReceiveDirectory");
                 foreach (var width in new[] { window.MinWidth, originalWidth })
                 {
                     window.Width = width;
@@ -66,6 +67,10 @@ internal static class UiChecks
                                 && header.Bounds.Height + 1 >= measured.Height,
                                 $"Tab header clipped: {language}, width {width}, {header.Text}, bounds {header.Bounds.Size}, text {measured.WidthIncludingTrailingWhitespace}x{measured.Height}");
                         }
+                        if (selected == 1)
+                            Check(Control<TextBox>("ReceiveDirectory").Bounds.Width >= 160
+                                && Control<Button>("OpenReceiveDirectoryButton").IsEffectivelyVisible,
+                                $"Receive folder controls do not fit: {language}, width {width}");
                     }
                 }
             }
@@ -76,8 +81,22 @@ internal static class UiChecks
             tabs.SelectedIndex = 0;
             window.Resources["Text.SendTab"] = Localization.Current.Text("SendTab");
             window.Resources["Text.ReceiveTab"] = Localization.Current.Text("ReceiveTab");
+            window.Resources["Text.OpenReceiveDirectory"] = Localization.Current.Text("OpenReceiveDirectory");
         }
         Console.WriteLine("PASS UI full tab labels / English-Chinese switching / both selections / minimum and default widths");
+
+        var originalDirectory = Control<TextBox>("ReceiveDirectory").Text;
+        Control<TextBox>("ReceiveDirectory").Text = "  ";
+        Click("OpenReceiveDirectoryButton");
+        Check(Control<TextBlock>("AppMessage").Text == Localization.Current.Text("Core.ChooseSaveLocation"),
+            "empty receive directory did not show a useful error");
+        var missingDirectory = Path.Combine(Root, "not-created");
+        Control<TextBox>("ReceiveDirectory").Text = missingDirectory;
+        Click("OpenReceiveDirectoryButton");
+        Check(Control<TextBlock>("AppMessage").Text == Localization.Current.Text("ReceiveDirectoryMissing")
+            && !Directory.Exists(missingDirectory), "missing receive directory was silently created or ignored");
+        Control<TextBox>("ReceiveDirectory").Text = originalDirectory;
+        Console.WriteLine("PASS UI open receive folder / empty and missing destinations / localized errors");
 
         var folder = Path.Combine(Root, "selection");
         await Task.Run(() =>
@@ -121,6 +140,8 @@ internal static class UiChecks
         Control<TextBox>("ReceiveDirectory").Text = destination;
         Click("ReceiveButton");
         await Until(() => Control<Button>("StopReceiveButton").IsEnabled, "receiver startup");
+        Check(Control<Button>("OpenReceiveDirectoryButton").IsEnabled && !Control<Button>("DestinationButton").IsEnabled,
+            "opening the receive folder was disabled while receiving");
         var originalCode = Control<TextBox>("ReceiveCode").Text;
         Control<TextBox>("SendCode").Text = originalCode;
         await window.AddPathsAsync([source]);
@@ -130,6 +151,10 @@ internal static class UiChecks
         Check(Control<ProgressBar>("SendProgress").Value == 100, "send progress not dispatched to UI");
         Check(await Wire.FileHashAsync(source, default) == await Wire.FileHashAsync(Path.Combine(destination, "中文.bin"), default),
             "UI transfer checksum differs");
+        Click("OpenReceiveDirectoryButton");
+        await Until(() => Control<TextBlock>("AppMessage").Text == Localization.Current.Text("ReceiveDirectoryOpened"),
+            "native receive folder launch");
+        Console.WriteLine("PASS UI native receive folder launch while receiving");
         Click("StopReceiveButton");
         await Until(() => Control<Button>("ReceiveButton").IsEnabled, "receiver shutdown");
         Click("ReceiveButton");

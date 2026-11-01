@@ -11,17 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.1 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.1/FileBridge-windows-x64-2.5.1-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.1 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.1/FileBridge-macOS-arm64-2.5.1-framework-dependent.zip) |
-| SHA-256 | 2.5.1 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.1/SHA256SUMS-2.5.1.txt) |
+| Windows x64 | 2.5.2 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.2/FileBridge-windows-x64-2.5.2-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.2 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.2/FileBridge-macOS-arm64-2.5.2-framework-dependent.zip) |
+| SHA-256 | 2.5.2 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.2/SHA256SUMS-2.5.2.txt) |
 
-**2.5.1 新增支持开发入口**：软件窗口底部和本页均提供自愿打赏链接，中英文界面同步切换。发布包由 `v2.5.1` 标签对应源码构建。
+**2.5.2 新增「打开接收目录」按钮**：位于接收页面的保存位置旁，接收过程中也可一键打开目录，支持中英文；目录为空或尚不存在时会显示提示。保留英文页签显示修复和自愿支持开发入口。发布包由 `v2.5.2` 标签对应源码构建。
 
-**2.5.1 adds an optional support link** in the app footer and this README, with Chinese and English text. Downloads are built from `v2.5.1`.
-
-**2.5.1 同版本更新（2026-11-01）**：修复英文「Send files / Receive files」页签文字显示不完整的问题，版本号保持不变。已下载旧包的用户请重新下载并替换客户端。
-
-**2.5.1 package refresh (2026-11-01):** fixed clipped **Send files / Receive files** tab labels in English. The version remains unchanged; download the refreshed package to replace an earlier copy.
+**2.5.2 adds Open receive folder** beside the save location on the Receive files page. Open the folder while receiving, with English/Chinese labels and clear messages for an empty or missing destination. Includes the English tab label fix and optional support link. Downloads are built from `v2.5.2`.
 
 ## 中文
 
@@ -39,6 +35,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 - **完整性校验**：每块 4 MiB，分块和最终文件都校验 SHA-256；续传时也检查已有数据。
 - **同名文件保护**：不覆盖已有的不同内容文件；内容一致的成品自动跳过。
 - **HTTPS 连接**：长期码固定接收端公钥与随机令牌；TLS 证书保持有效期校验，并用同一密钥自动续签，连接码不变。
+- **打开接收目录**：在接收页面一键打开当前保存目录，接收过程中也可使用。
 - **双语界面**：中文 / English 即时切换并记住选择，显示收发进度、速度、当前文件剩余时间与并行状态。
 
 ### 运行要求
@@ -112,6 +109,7 @@ If FileBridge is useful to you, you can [leave an optional tip through Stripe](h
 - **SHA-256 verification** for each 4 MiB chunk, the resumed prefix and the completed file.
 - **Existing-file protection:** different contents are never overwritten; already-completed files with matching contents are skipped.
 - **HTTPS transport** with a persistent public-key pin and random token. TLS certificate dates remain checked; same-key certificate renewal leaves the long-lived code unchanged.
+- **Open receive folder:** open the current save folder directly from the receive page, including while receiving.
 - **Chinese and English UI** with a saved language preference, transfer progress, speed, time remaining for the current file and negotiated parallel mode.
 
 ### Requirements

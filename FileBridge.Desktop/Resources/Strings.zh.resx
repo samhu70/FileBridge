@@ -81,6 +81,18 @@
   <data name="SaveLocation" xml:space="preserve">
     <value>保存位置</value>
   </data>
+  <data name="OpenReceiveDirectory" xml:space="preserve">
+    <value>打开接收目录</value>
+  </data>
+  <data name="ReceiveDirectoryMissing" xml:space="preserve">
+    <value>接收目录尚不存在，请先开始接收或选择已有目录。</value>
+  </data>
+  <data name="OpenReceiveDirectoryFailed" xml:space="preserve">
+    <value>无法打开接收目录，请检查目录访问权限后重试。</value>
+  </data>
+  <data name="ReceiveDirectoryOpened" xml:space="preserve">
+    <value>已打开接收目录。</value>
+  </data>
   <data name="StartReceiving" xml:space="preserve">
     <value>开始接收</value>
   </data>

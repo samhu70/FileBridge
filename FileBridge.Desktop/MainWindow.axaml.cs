@@ -270,6 +270,19 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception error) { ShowError(error); }
     }
+    private async void OpenReceiveDirectory(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var path = ReceiveDirectory.Text?.Trim() ?? "";
+            if (path.Length == 0) { Message("Core.ChooseSaveLocation", true); return; }
+            var directory = new DirectoryInfo(path);
+            if (!directory.Exists) { Message("ReceiveDirectoryMissing", true); return; }
+            if (!await Launcher.LaunchDirectoryInfoAsync(directory)) { Message("OpenReceiveDirectoryFailed", true); return; }
+            Message("ReceiveDirectoryOpened");
+        }
+        catch (Exception error) { ShowError(error); }
+    }
     private async void StartReceiving(object? sender, RoutedEventArgs e)
     {
         if (receiver is not null || receiverChanging) return;

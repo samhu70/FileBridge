@@ -90,7 +90,11 @@
               </Grid>
               <StackPanel Grid.Row="1" Spacing="7">
                 <TextBlock Text="{DynamicResource Text.SaveLocation}" Classes="label" />
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox x:Name="ReceiveDirectory" AutomationProperties.Name="{DynamicResource Text.SaveLocation}" /><Button Grid.Column="1" x:Name="DestinationButton" Content="{DynamicResource Text.ChooseFolder}" Click="ChooseDestination" /></Grid>
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                  <TextBox x:Name="ReceiveDirectory" AutomationProperties.Name="{DynamicResource Text.SaveLocation}" />
+                  <Button Grid.Column="1" x:Name="DestinationButton" Content="{DynamicResource Text.ChooseFolder}" Click="ChooseDestination" />
+                  <Button Grid.Column="2" x:Name="OpenReceiveDirectoryButton" Content="{DynamicResource Text.OpenReceiveDirectory}" Click="OpenReceiveDirectory" />
+                </Grid>
               </StackPanel>
               <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10">
                 <Button x:Name="ReceiveButton" Classes="primary" Content="{DynamicResource Text.StartReceiving}" Click="StartReceiving" />
