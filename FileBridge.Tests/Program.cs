@@ -14,10 +14,12 @@ Directory.CreateDirectory(root);
 try
 {
     if (args.Contains("--ui")) { UiChecks.Run(root); return; }
+    if (args.Contains("--reverse")) { await ReverseChecks.RunAsync(root); return; }
     ProtocolChecks.Run();
     await ConnectionChecks.RunAsync(root);
     await LifetimeChecks.RunAsync(root);
     await AdaptiveStreamChecks.RunAsync(root);
+    await ReverseChecks.RunAsync(root);
     LocalizationChecks();
     ReceiveDisplayChecks();
     AddressDiscovery();
@@ -32,7 +34,17 @@ try
     if (args.Contains("--large")) await LargeTransfer();
     Console.WriteLine("ALL PASS");
 }
-finally { Directory.Delete(root, recursive: true); }
+finally
+{
+    // Finder can recreate .DS_Store while a folder opened by the native UI check is being deleted.
+    for (var attempt = 0; ; attempt++)
+    {
+        try { Directory.Delete(root, recursive: true); break; }
+        catch (IOException) when (attempt < 2 && Directory.Exists(root)
+            && Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).All(f => Path.GetFileName(f) == ".DS_Store"))
+        { await Task.Delay(100); }
+    }
+}
 
 void LocalizationChecks()
 {

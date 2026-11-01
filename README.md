@@ -11,13 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.2 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.2/FileBridge-windows-x64-2.5.2-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.2 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.2/FileBridge-macOS-arm64-2.5.2-framework-dependent.zip) |
-| SHA-256 | 2.5.2 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.2/SHA256SUMS-2.5.2.txt) |
+| Windows x64 | 2.5.3 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.3/FileBridge-windows-x64-2.5.3-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.3 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.3/FileBridge-macOS-arm64-2.5.3-framework-dependent.zip) |
+| SHA-256 | 2.5.3 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.3/SHA256SUMS-2.5.3.txt) |
 
-**2.5.2 新增「打开接收目录」按钮**：位于接收页面的保存位置旁，接收过程中也可一键打开目录，支持中英文；目录为空或尚不存在时会显示提示。保留英文页签显示修复和自愿支持开发入口。发布包由 `v2.5.2` 标签对应源码构建。
+**2.5.3 新增反向传输**：只需一台电脑可被对方访问，即可通过普通上传和反向下载双向传文件；保留断点续传、分块及整文件 SHA-256 校验。反向模式要求双方升级至 2.5.3 或更新版本；原有连接码和直接发送方式保持兼容。发布包由 `v2.5.3` 标签对应源码构建。
 
-**2.5.2 adds Open receive folder** beside the save location on the Receive files page. Open the folder while receiving, with English/Chinese labels and clear messages for an empty or missing destination. Includes the English tab label fix and optional support link. Downloads are built from `v2.5.2`.
+**2.5.3 adds reverse transfers:** exchange files in both directions when only one computer is reachable, using ordinary uploads and reverse downloads with resume and chunk/whole-file SHA-256 verification. Both peers need 2.5.3 or newer for reverse transfers. Existing connection codes and direct uploads remain compatible. Downloads are built from `v2.5.3`.
 
 ## 中文
 
@@ -35,6 +35,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 - **完整性校验**：每块 4 MiB，分块和最终文件都校验 SHA-256；续传时也检查已有数据。
 - **同名文件保护**：不覆盖已有的不同内容文件；内容一致的成品自动跳过。
 - **HTTPS 连接**：长期码固定接收端公钥与随机令牌；TLS 证书保持有效期校验，并用同一密钥自动续签，连接码不变。
+- **反向传输**：仅一台电脑可被访问时，对方可主动连接它并下载所选文件，保留续传和 SHA-256 校验；双方需升级至 2.5.3 或更新版本。
 - **打开接收目录**：在接收页面一键打开当前保存目录，接收过程中也可使用。
 - **双语界面**：中文 / English 即时切换并记住选择，显示收发进度、速度、当前文件剩余时间与并行状态。
 
@@ -58,6 +59,17 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 5. 需要中断时点击「暂停」；恢复时点击「继续发送」。以「校验通过」作为完成标准。
 
 接收端重启后，点击「开始接收」即可沿用原连接码；发送方重新选择原文件即可续传。不要删除保存目录下的 `.filebridge-parts`。
+
+### 反向传输
+
+双方都需要运行 2.5.3 或更新版本。只需提供文件的电脑可被对方访问，对方无需反向共享自己的电脑。
+
+1. **你已共享的电脑**：在「接收文件」页按原方式启动接收服务，保留这台电脑的连接码。
+2. **你发文件给对方**：在「发送文件」页选择文件或文件夹，点击「反向发送」。无需输入对方连接码；仅本次选中的文件会在发送期间提供给持码者。
+3. **对方接收**：在「接收文件」页勾选「连接对方接收（无需共享本机）」，粘贴你的连接码，选择保存位置，点击「连接并接收」。对方不需要共享自己的电脑，也不需要启动本地接收服务。
+4. **对方发文件给你**：仍使用原「发送文件」方式，输入同一个你的连接码即可。
+
+反向接收可暂停并继续，已校验的连续数据保存在 `.filebridge-parts`。源电脑暂停反向发送后，先再次点击「反向发送」，对方再继续接收。源电脑重启后需重新启动接收服务、重新选择原文件并反向发送；对方重新连接后校验已有进度并续传。损坏的已有片段会重传；分块及最终文件均通过 SHA-256 校验后才确认完成。发送完成或暂停后撤销文件下载入口，普通收发和原有连接码保持兼容。
 
 ### 连接码的保存与更换
 
@@ -109,6 +121,7 @@ If FileBridge is useful to you, you can [leave an optional tip through Stripe](h
 - **SHA-256 verification** for each 4 MiB chunk, the resumed prefix and the completed file.
 - **Existing-file protection:** different contents are never overwritten; already-completed files with matching contents are skipped.
 - **HTTPS transport** with a persistent public-key pin and random token. TLS certificate dates remain checked; same-key certificate renewal leaves the long-lived code unchanged.
+- **Reverse transfers:** when only one computer is reachable, the peer connects to it to download selected files, with resume and SHA-256 verification. Both peers need 2.5.3 or newer.
 - **Open receive folder:** open the current save folder directly from the receive page, including while receiving.
 - **Chinese and English UI** with a saved language preference, transfer progress, speed, time remaining for the current file and negotiated parallel mode.
 
@@ -129,6 +142,17 @@ On Windows, extract the ZIP and open `FileBridge.exe`. On Mac, extract the ZIP a
 5. Select **Pause** when needed and **Continue sending** to resume. Wait for checksum verification before treating a file as complete.
 
 After restarting the receiver, select **Start receiving** to reuse the saved code. Select the original source files again to resume. Keep the `.filebridge-parts` directory.
+
+### Reverse transfers
+
+Both peers must run 2.5.3 or newer. Only the computer offering files needs to be reachable; the downloading peer does not need to share its own computer.
+
+1. **On your shared computer:** start receiving as usual and keep its connection code.
+2. **To send files back to the other person:** select files or a folder on **Send files**, then choose **Reverse send**. Their code is not required. Only explicitly selected files are offered during this operation.
+3. **On the other computer:** select **Receive from a shared computer (no local sharing)** on **Receive files**, paste your code, choose a save location, and select **Connect and receive**. This computer only makes outgoing connections and needs no share or listening service.
+4. **To send files to your shared computer:** the other person continues to use the original **Send files** action with the same code.
+
+Pause and resume keep the verified contiguous prefix in `.filebridge-parts`. If the source pauses, choose **Reverse send** again before the peer resumes receiving. After a source restart, start its receive service again and reselect the original files; the peer reconnects and verifies its saved prefix before resuming. Corrupt prefixes are retransferred, chunks are verified before durable writes, and final files are SHA-256 checked before completion. Completion or cancellation withdraws file downloads; existing invitations and direct transfers stay compatible.
 
 ### Saved codes and manual changes
 

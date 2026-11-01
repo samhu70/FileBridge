@@ -450,4 +450,70 @@
   <data name="SupportFileBridgeHint" xml:space="preserve">
     <value>自愿打赏，通过浏览器打开 Stripe。</value>
   </data>
+  <data name="ReverseSend" xml:space="preserve">
+    <value>反向发送</value>
+  </data>
+  <data name="ReverseSendHelp" xml:space="preserve">
+    <value>仅共享本机时：先在接收页启动服务，再反向发送，让对方用你的连接码接收。</value>
+  </data>
+  <data name="ReverseReceiveMode" xml:space="preserve">
+    <value>连接对方接收（无需共享本机）</value>
+  </data>
+  <data name="ReversePeerCode" xml:space="preserve">
+    <value>对方的连接码</value>
+  </data>
+  <data name="ReverseCodeHint" xml:space="preserve">
+    <value>粘贴提供文件的电脑连接码</value>
+  </data>
+  <data name="ReverseReceiveHelp" xml:space="preserve">
+    <value>请让对方先启动接收服务并点击“反向发送”。你无需把自己的电脑共享给对方。</value>
+  </data>
+  <data name="ConnectAndReceive" xml:space="preserve">
+    <value>连接并接收</value>
+  </data>
+  <data name="PauseReceiving" xml:space="preserve">
+    <value>暂停接收</value>
+  </data>
+  <data name="ReverseSendActive" xml:space="preserve">
+    <value>请把本机接收页的连接码发给对方，让对方选择“连接对方接收”并开始接收。</value>
+  </data>
+  <data name="ReverseSendPaused" xml:space="preserve">
+    <value>反向发送已暂停；再次点击“反向发送”后，对方可继续接收。</value>
+  </data>
+  <data name="ReverseConnecting" xml:space="preserve">
+    <value>正在连接提供文件的电脑</value>
+  </data>
+  <data name="ReverseReceiving" xml:space="preserve">
+    <value>正在反向接收，暂停或中断后可继续，完成后校验 SHA-256。</value>
+  </data>
+  <data name="ReverseReceiveComplete" xml:space="preserve">
+    <value>全部反向接收文件校验通过。</value>
+  </data>
+  <data name="ReverseReceivePaused" xml:space="preserve">
+    <value>接收已暂停，点击“连接并接收”继续；如对方已暂停发送，请先让对方再次反向发送。</value>
+  </data>
+  <data name="Core.ReverseStartFirst" xml:space="preserve">
+    <value>请先在接收页启动本机接收服务，再反向发送。</value>
+  </data>
+  <data name="Core.ReverseListTooLarge" xml:space="preserve">
+    <value>反向发送的文件列表过大，请分批选择。</value>
+  </data>
+  <data name="Core.ReverseBusy" xml:space="preserve">
+    <value>已有反向发送任务，请先暂停该任务。</value>
+  </data>
+  <data name="Core.ReverseStopped" xml:space="preserve">
+    <value>反向发送服务已停止，请重新开始。</value>
+  </data>
+  <data name="Core.ReverseNotReady" xml:space="preserve">
+    <value>对方尚未准备反向发送文件，请让对方准备后重试。</value>
+  </data>
+  <data name="Core.ReverseChanged" xml:space="preserve">
+    <value>反向发送任务已变化，请重新连接。</value>
+  </data>
+  <data name="Core.ReverseListInvalid" xml:space="preserve">
+    <value>反向发送的文件列表无效。</value>
+  </data>
+  <data name="Core.ReverseUnsupported" xml:space="preserve">
+    <value>对方版本不支持反向传输，请升级双方客户端。</value>
+  </data>
 </root>

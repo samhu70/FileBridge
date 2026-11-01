@@ -22,6 +22,7 @@ public sealed partial class MainWindow
         {
             var saved = connections.Load();
             SendCode.Text = saved.SendCode ?? "";
+            ReverseReceiveCode.Text = saved.ReverseCode ?? "";
             if (!string.IsNullOrEmpty(saved.Address)) ReceiveAddress.Text = saved.Address;
             ReceivePort.Text = saved.Port ?? "8787";
             if (!string.IsNullOrEmpty(saved.Directory)) ReceiveDirectory.Text = saved.Directory;
@@ -37,7 +38,7 @@ public sealed partial class MainWindow
             SaveConnectionPreferences();
             if (invitationPreviewPending && receiver is null && !receiverChanging) RefreshInvitationPreview();
         };
-        foreach (var field in new[] { SendCode, ReceiveAddress, ReceivePort, ReceiveDirectory })
+        foreach (var field in new[] { SendCode, ReceiveAddress, ReceivePort, ReceiveDirectory, ReverseReceiveCode })
             field.TextChanged += (_, _) =>
             {
                 if (field == ReceiveAddress || field == ReceivePort)
@@ -58,7 +59,7 @@ public sealed partial class MainWindow
         try
         {
             connections.SavePreferences(new(SendCode.Text ?? "", ReceiveAddress.Text?.Trim() ?? "",
-                ReceivePort.Text ?? "", ReceiveDirectory.Text?.Trim() ?? ""));
+                ReceivePort.Text ?? "", ReceiveDirectory.Text?.Trim() ?? "", ReverseCode: ReverseReceiveCode.Text ?? ""));
             return true;
         }
         catch (Exception error) { ShowError(error, "ConnectionSaveFailed"); return false; }
@@ -83,11 +84,20 @@ public sealed partial class MainWindow
     private void SetReceiverControls()
     {
         var active = receiver is not null;
-        ReceiveButton.IsEnabled = !active && !receiverChanging;
-        StopReceiveButton.IsEnabled = active && !receiverChanging;
-        RecreateCodeButton.IsEnabled = !active && !receiverChanging;
+        var pulling = reverseReceiving is not null;
+        var reverse = ReverseReceiveMode.IsChecked == true;
+        ReceiveButton.IsEnabled = !active && !pulling && !receiverChanging;
+        StopReceiveButton.IsEnabled = (active || pulling) && !receiverChanging && !reverseSending;
+        ReceiveButton.Content = language.Text(reverse ? "ConnectAndReceive" : "StartReceiving");
+        StopReceiveButton.Content = language.Text(reverse ? "PauseReceiving" : "StopReceiving");
+        ReverseReceiveMode.IsEnabled = !active && !pulling && !receiverChanging;
+        RecreateCodeButton.IsEnabled = !active && !pulling && !receiverChanging && !reverse;
         CopyButton.IsEnabled = !receiverChanging && !string.IsNullOrEmpty(ReceiveCode.Text);
-        SetReceiverFields(!active && !receiverChanging);
+        SetReceiverFields(!active && !pulling && !receiverChanging);
+        ReverseReceiveCode.IsReadOnly = active || pulling || receiverChanging;
+        LocalReceiveEndpoint.IsVisible = !reverse;
+        ReverseReceiveEndpoint.IsVisible = reverse;
+        LocalInvitationPanel.IsVisible = !reverse;
     }
 
     private (string Address, int Port) ReadReceiveEndpoint()
@@ -109,7 +119,7 @@ public sealed partial class MainWindow
 
     private async void RecreateReceiverCode(object? sender, RoutedEventArgs e)
     {
-        if (receiver is not null || receiverChanging) return;
+        if (receiver is not null || reverseReceiving is not null || receiverChanging) return;
         receiverChanging = true;
         SetReceiverControls();
         try
@@ -127,7 +137,11 @@ public sealed partial class MainWindow
 
     private async Task CloseReceiverAsync()
     {
-        try { if (receiver is not null) await receiver.DisposeAsync(); }
+        try
+        {
+            if (reverseDownload is not null) { try { await reverseDownload; } catch { } }
+            if (receiver is not null) await receiver.DisposeAsync();
+        }
         finally { receiverLease?.Dispose(); receiverLease = null; }
     }
 }

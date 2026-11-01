@@ -41,15 +41,15 @@ internal static class UiChecks
 
         var tabs = window.GetVisualDescendants().OfType<TabControl>().Single();
         var originalWidth = window.Width;
+        string[] layoutKeys = ["SendTab", "ReceiveTab", "OpenReceiveDirectory", "ReverseSend", "ReverseSendHelp",
+            "ReverseReceiveMode", "ReversePeerCode", "ReverseCodeHint", "ReverseReceiveHelp"];
         try
         {
             foreach (var language in new[] { "en", "zh", "en" })
             {
                 var text = new Localization(Path.Combine(Root, language + ".txt"),
                     System.Globalization.CultureInfo.GetCultureInfo(language));
-                window.Resources["Text.SendTab"] = text.Text("SendTab");
-                window.Resources["Text.ReceiveTab"] = text.Text("ReceiveTab");
-                window.Resources["Text.OpenReceiveDirectory"] = text.Text("OpenReceiveDirectory");
+                foreach (var key in layoutKeys) window.Resources["Text." + key] = text.Text(key);
                 foreach (var width in new[] { window.MinWidth, originalWidth })
                 {
                     window.Width = width;
@@ -68,9 +68,18 @@ internal static class UiChecks
                                 $"Tab header clipped: {language}, width {width}, {header.Text}, bounds {header.Bounds.Size}, text {measured.WidthIncludingTrailingWhitespace}x{measured.Height}");
                         }
                         if (selected == 1)
+                        {
                             Check(Control<TextBox>("ReceiveDirectory").Bounds.Width >= 160
                                 && Control<Button>("OpenReceiveDirectoryButton").IsEffectivelyVisible,
                                 $"Receive folder controls do not fit: {language}, width {width}");
+                            Control<CheckBox>("ReverseReceiveMode").IsChecked = true;
+                            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+                            Check(Control<TextBox>("ReverseReceiveCode").Bounds.Width >= 160
+                                && !Control<Grid>("LocalReceiveEndpoint").IsVisible,
+                                $"Reverse receive controls do not fit: {language}, width {width}");
+                            Control<CheckBox>("ReverseReceiveMode").IsChecked = false;
+                            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+                        }
                     }
                 }
             }
@@ -79,9 +88,7 @@ internal static class UiChecks
         {
             window.Width = originalWidth;
             tabs.SelectedIndex = 0;
-            window.Resources["Text.SendTab"] = Localization.Current.Text("SendTab");
-            window.Resources["Text.ReceiveTab"] = Localization.Current.Text("ReceiveTab");
-            window.Resources["Text.OpenReceiveDirectory"] = Localization.Current.Text("OpenReceiveDirectory");
+            foreach (var key in layoutKeys) window.Resources["Text." + key] = Localization.Current.Text(key);
         }
         Console.WriteLine("PASS UI full tab labels / English-Chinese switching / both selections / minimum and default widths");
 
@@ -210,6 +217,69 @@ internal static class UiChecks
         }
         finally { reopened.Close(); }
         Console.WriteLine("PASS UI manual recreate/change / full window restart retains both codes and destination / listener stays off until started");
+
+        var reverseHost = new MainWindow(Path.Combine(Root, "reverse-host", "connections.json"));
+        var peerSettings = Path.Combine(Root, "reverse-peer", "connections.json");
+        var reversePeer = new MainWindow(peerSettings);
+        reverseHost.Show();
+        reversePeer.Show();
+        T Host<T>(string name) where T : Control => reverseHost.FindControl<T>(name)!;
+        T Peer<T>(string name) where T : Control => reversePeer.FindControl<T>(name)!;
+        void HostClick(string name) => Host<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        void PeerClick(string name) => Peer<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        try
+        {
+            Host<TextBox>("ReceiveAddress").Text = "127.0.0.1";
+            using (var listener = new TcpListener(IPAddress.Loopback, 0))
+            {
+                listener.Start();
+                Host<TextBox>("ReceivePort").Text = ((IPEndPoint)listener.LocalEndpoint).Port.ToString();
+            }
+            Host<TextBox>("ReceiveDirectory").Text = Path.Combine(Root, "reverse-host-received");
+            HostClick("ReceiveButton");
+            await Until(() => Host<Button>("StopReceiveButton").IsEnabled, "reverse host listener startup");
+            await reverseHost.AddPathsAsync([source]);
+            HostClick("ReverseSendButton");
+            await Until(() => Host<TextBlock>("SendStatus").Text?.StartsWith(Localization.Current.Text("Core.WaitingForData"), StringComparison.Ordinal) == true,
+                "reverse source offer");
+            Check(!Host<Button>("StopReceiveButton").IsEnabled && Host<Button>("PauseButton").IsEnabled,
+                "reverse source can stop its listener without cancelling the offer");
+            var hostCode = Host<TextBox>("ReceiveCode").Text;
+            Peer<CheckBox>("ReverseReceiveMode").IsChecked = true;
+            Check(!Peer<Grid>("LocalReceiveEndpoint").IsVisible && Peer<StackPanel>("ReverseReceiveEndpoint").IsVisible
+                && !Peer<StackPanel>("LocalInvitationPanel").IsVisible, "reverse receive mode did not show peer-code controls");
+            Peer<TextBox>("ReverseReceiveCode").Text = hostCode;
+            Peer<TextBox>("ReceiveAddress").Text = "not-a-local-listener";
+            Peer<TextBox>("ReceivePort").Text = "unused";
+            var reverseDestination = Path.Combine(Root, "reverse-ui-received");
+            Peer<TextBox>("ReceiveDirectory").Text = reverseDestination;
+            PeerClick("ReceiveButton");
+            Check(!Peer<CheckBox>("ReverseReceiveMode").IsEnabled && Peer<Button>("StopReceiveButton").IsEnabled,
+                "reverse receiving did not lock conflicting controls or expose pause");
+            PeerClick("StopReceiveButton");
+            await Until(() => Peer<Button>("ReceiveButton").IsEnabled, "reverse receive pause");
+            Check(Peer<TextBlock>("AppMessage").Text == Localization.Current.Text("ReverseReceivePaused"),
+                "reverse receive pause did not show resume guidance");
+            PeerClick("ReceiveButton");
+            await Until(() => Peer<Button>("ReceiveButton").IsEnabled && Peer<ProgressBar>("ReceiveProgress").Value == 100,
+                "reverse UI download completion");
+            await Until(() => Host<Button>("SendButton").IsEnabled, "reverse source verified completion");
+            Check(await Wire.FileHashAsync(Path.Combine(reverseDestination, "中文.bin"), default) == await Wire.FileHashAsync(source, default),
+                "reverse UI transfer checksum mismatch");
+            Check(new ConnectionStore(peerSettings).Load().Identity is null, "reverse peer created a local listener identity");
+            reversePeer.Close();
+            var reverseReopened = new MainWindow(peerSettings);
+            try
+            {
+                Check(reverseReopened.FindControl<TextBox>("ReverseReceiveCode")!.Text == hostCode,
+                    "reverse peer code was not retained across restart");
+            }
+            finally { reverseReopened.Close(); }
+            HostClick("StopReceiveButton");
+            await Until(() => Host<Button>("ReceiveButton").IsEnabled, "reverse host shutdown");
+        }
+        finally { reverseHost.Close(); reversePeer.Close(); }
+        Console.WriteLine("PASS UI reverse send / outgoing-only receive / pause and resume / checksum / peer-code persistence / controls restored");
 
     }
 

@@ -44,7 +44,7 @@ public sealed partial class MainWindow : Window
         InitializeConnections();
         ApplyLanguage();
         receiveTimer.Tick += (_, _) => { if (receiveProgress?.Stage == TransferStage.Receiving) RenderReceive(); };
-        Closed += (_, _) => { receiveTimer.Stop(); sending?.Cancel(); _ = CloseReceiverAsync(); };
+        Closed += (_, _) => { receiveTimer.Stop(); sending?.Cancel(); reverseReceiving?.Cancel(); _ = CloseReceiverAsync(); };
     }
     private string FormatBytes(long value) => TransferDisplay.Bytes(value, language.Culture);
 
@@ -68,6 +68,7 @@ public sealed partial class MainWindow : Window
         RenderSend();
         RenderReceive();
         RenderMessage();
+        SetReceiverControls();
         foreach (var row in rows) row.RefreshLanguage();
     }
 
@@ -106,7 +107,7 @@ public sealed partial class MainWindow : Window
         }
         ReceiveStatus.Text = TransferDisplay.StageText(p, language) + (p.FileName.Length > 0 ? " · " + p.FileName : "");
         ReceiveProgress.Value = p.Total > 0 ? 100.0 * p.Completed / p.Total : 0;
-        var active = receiver is not null && p.Stage == TransferStage.Receiving;
+        var active = (receiver is not null || reverseReceiving is not null) && p.Stage == TransferStage.Receiving;
         var speed = TransferDisplay.ReceiveSpeed(p, active, Environment.TickCount64 - lastReceiveUpdate);
         ReceiveDetail.Text = $"{FormatBytes(p.Completed)} / {FormatBytes(p.Total)} · " + language.Text("ReceiveSpeed", FormatBytes((long)speed) + "/s");
         ReceiveEstimate.Text = TransferDisplay.ReceiveEstimate(p, speed, language) + " · " + TransferDisplay.ParallelMode(p.ParallelChunks, language);
@@ -211,47 +212,57 @@ public sealed partial class MainWindow : Window
         SetSendState("WaitingForFiles");
         SetSendAction("StartSending");
     }
-    private async void SendFiles(object? sender, RoutedEventArgs e)
+    private async void SendFiles(object? sender, RoutedEventArgs e) => await SendSelectedAsync(false);
+    private async void SendReverseFiles(object? sender, RoutedEventArgs e) => await SendSelectedAsync(true);
+
+    private async Task SendSelectedAsync(bool reverse)
     {
         if (busy) return;
         try
         {
             if (rows.Count == 0) throw new InvalidOperationException("请先选择文件或文件夹。");
             var code = SendCode.Text ?? "";
-            _ = Invitation.Parse(code);
+            if (reverse && receiver is null) throw new InvalidOperationException("请先在接收页启动本机接收服务，再反向发送。");
+            if (!reverse) _ = Invitation.Parse(code);
+            reverseSending = reverse;
             busy = true;
             sending = new CancellationTokenSource();
             SetSendControls();
-            Message("TransferActive");
+            SetReceiverControls();
+            Message(reverse ? "ReverseSendActive" : "TransferActive");
             var progress = new Progress<TransferProgress>(UpdateSendProgress);
             var files = rows.Select(r => r.File).ToList();
             var streams = StreamPicker.SelectedIndex + 1;
-            await Task.Run(() => TransferSender.SendAsync(files, code, progress, sending.Token, streams));
+            if (reverse) await Task.Run(() => receiver!.SendReverseAsync(files, progress, sending.Token, streams));
+            else await Task.Run(() => TransferSender.SendAsync(files, code, progress, sending.Token, streams));
             Message("SendComplete");
             SetSendAction("VerifyAgain");
         }
         catch (OperationCanceledException)
         {
-            Message("Paused");
-            SetSendAction("ContinueSending");
+            Message(reverse ? "ReverseSendPaused" : "Paused");
+            SetSendAction(reverse ? "StartSending" : "ContinueSending");
         }
         catch (Exception error)
         {
             ShowError(error);
             SetSendState("SendFailed");
-            SetSendAction("RetryResume");
+            SetSendAction(reverse ? "StartSending" : "RetryResume");
         }
         finally
         {
             busy = false;
+            reverseSending = false;
             sending?.Dispose();
             sending = null;
             SetSendControls();
+            SetReceiverControls();
         }
     }
     private void SetSendControls()
     {
         SendButton.IsEnabled = !busy;
+        ReverseSendButton.IsEnabled = !busy;
         ChangeSendCodeButton.IsEnabled = !busy;
         PauseButton.IsEnabled = sending is not null;
         FilesButton.IsEnabled = !busy;
@@ -285,6 +296,7 @@ public sealed partial class MainWindow : Window
     }
     private async void StartReceiving(object? sender, RoutedEventArgs e)
     {
+        if (ReverseReceiveMode.IsChecked == true) { await ReceiveReverseAsync(); return; }
         if (receiver is not null || receiverChanging) return;
         receiverChanging = true;
         SetReceiverControls();
@@ -319,6 +331,7 @@ public sealed partial class MainWindow : Window
     }
     private async void StopReceiving(object? sender, RoutedEventArgs e)
     {
+        if (reverseReceiving is not null) { reverseReceiving.Cancel(); StopReceiveButton.IsEnabled = false; return; }
         if (receiverChanging) return;
         receiverChanging = true;
         SetReceiverControls();

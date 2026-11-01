@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace FileBridge.Core;
 
 /// <summary>HTTPS receiver with persistent partial files and atomic, non-overwriting completion.</summary>
-public sealed class TransferReceiver : IAsyncDisposable
+public sealed partial class TransferReceiver : IAsyncDisposable
 {
     private readonly string root;
     // Guards sessions, the contiguous on-disk prefix, and progressChanged.
@@ -22,7 +22,7 @@ public sealed class TransferReceiver : IAsyncDisposable
     private TaskCompletionSource progressChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Dictionary<string, ReceiveSession> sessions = [];
     private readonly IProgress<TransferProgress>? progress;
-    private readonly ReceiverCertificateCache certificates;
+    private readonly ReceiverCertificateCache? certificates;
     private readonly bool publicKeyPin;
     private WebApplication? app;
     private readonly string token;
@@ -52,13 +52,14 @@ public sealed class TransferReceiver : IAsyncDisposable
         }
     }
 
-    private TransferReceiver(string directory, IProgress<TransferProgress>? progress, ReceiverIdentity? identity)
+    private TransferReceiver(string directory, IProgress<TransferProgress>? progress, ReceiverIdentity? identity, bool localOnly = false)
     {
         root = Path.GetFullPath(directory);
         this.progress = progress;
         Directory.CreateDirectory(root);
         RejectLinks(root);
         Directory.CreateDirectory(SafePath(Wire.PartsDirectory, allowParts: true));
+        if (localOnly) { token = ""; return; }
         var transientIdentity = identity is null;
         identity ??= ReceiverIdentity.Create();
         token = identity.Token;
@@ -91,7 +92,7 @@ public sealed class TransferReceiver : IAsyncDisposable
                 options.Listen(ip, port, listen =>
                 {
                     listen.Protocols = HttpProtocols.Http1;
-                    listen.UseHttps(https => https.ServerCertificateSelector = (_, _) => receiver.certificates.GetCertificate());
+                    listen.UseHttps(https => https.ServerCertificateSelector = (_, _) => receiver.certificates!.GetCertificate());
                 });
             });
             var app = builder.Build();
@@ -99,7 +100,7 @@ public sealed class TransferReceiver : IAsyncDisposable
             app.Run(receiver.HandleAsync);
             await app.StartAsync(ct);
             receiver.Invitation = new Invitation(app.Urls.Single().TrimEnd('/'), receiver.token,
-                Wire.CertificatePin(receiver.certificates.GetCertificate(), receiver.publicKeyPin), receiver.publicKeyPin);
+                Wire.CertificatePin(receiver.certificates!.GetCertificate(), receiver.publicKeyPin), receiver.publicKeyPin);
             return receiver;
         }
         catch { await receiver.DisposeAsync(); throw; }
@@ -140,6 +141,13 @@ public sealed class TransferReceiver : IAsyncDisposable
         var ct = context.RequestAborted;
         try
         {
+            if (context.Request.Path.StartsWithSegments("/v3/reverse"))
+            {
+                if (!await chunkSlots.WaitAsync(0, ct)) throw new TransferException(429, "接收端忙，请稍后重试。");
+                try { await HandleReverseAsync(context, ct); }
+                finally { chunkSlots.Release(); }
+                return;
+            }
             ResumeState result;
             if (context.Request.Path == "/v2/chunk")
             {
@@ -188,13 +196,19 @@ public sealed class TransferReceiver : IAsyncDisposable
     {
         if (context.Request.ContentLength is null or > 16384) throw new TransferException(400, "文件信息过大或无效。");
         var m = await context.Request.ReadFromJsonAsync<FileManifest>(ct) ?? throw new InvalidDataException("文件信息无效。");
-        if (!Wire.ValidName(m.Name) || !Wire.ValidHash(m.Hash) || m.Size < 0) throw new InvalidDataException("文件信息无效。");
         var parallelChunks = Wire.DefaultParallelChunks;
         if (context.Request.Query.TryGetValue("parallelChunks", out var requested))
         {
             if (!int.TryParse(requested, out var count) || count < 1) throw new InvalidDataException("并发数无效。");
             parallelChunks = Math.Min(count, Wire.MaxParallelChunks);
         }
+        return await BeginFileAsync(m, parallelChunks, context.Request.Query["reset"] == "1", ct);
+    }
+
+    // Caller holds gate for begin/finish in both direct uploads and local reverse downloads.
+    private async Task<ResumeState> BeginFileAsync(FileManifest m, int parallelChunks, bool reset, CancellationToken ct)
+    {
+        if (!Wire.ValidName(m.Name) || !Wire.ValidHash(m.Hash) || m.Size < 0) throw new InvalidDataException("文件信息无效。");
         var final = SafePath(m.Name);
         if (File.Exists(final))
         {
@@ -204,7 +218,7 @@ public sealed class TransferReceiver : IAsyncDisposable
             return new(m.Size, "", true, parallelChunks);
         }
         var partial = SafePath($"{Wire.PartsDirectory}/{m.Id}.part", true);
-        await using var file = new FileStream(partial, context.Request.Query["reset"] == "1" ? FileMode.Create : FileMode.OpenOrCreate,
+        await using var file = new FileStream(partial, reset ? FileMode.Create : FileMode.OpenOrCreate,
             FileAccess.ReadWrite, FileShare.None, 1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
         if (file.Length > m.Size) throw new TransferException(409, "临时文件大小异常，请更换接收目录。");
         var offset = file.Length;
@@ -215,9 +229,9 @@ public sealed class TransferReceiver : IAsyncDisposable
         SignalProgress();
         return new(offset, prefix, ParallelChunks: parallelChunks);
     }
-    private (ReceiveSession Session, string Partial) Lookup(HttpContext context)
+    private (ReceiveSession Session, string Partial) Lookup(string id)
     {
-        if (!sessions.TryGetValue(context.Request.Query["id"].ToString(), out var session))
+        if (!sessions.TryGetValue(id, out var session))
             throw new TransferException(409, "会话已重启，请重新连接。");
         return (session, SafePath($"{Wire.PartsDirectory}/{session.Manifest.Id}.part", true));
     }
@@ -228,7 +242,7 @@ public sealed class TransferReceiver : IAsyncDisposable
         ReceiveSession session;
         string partial;
         await gate.WaitAsync(ct);
-        try { (session, partial) = Lookup(context); }
+        try { (session, partial) = Lookup(context.Request.Query["id"].ToString()); }
         finally { gate.Release(); }
         var m = session.Manifest;
         if (!long.TryParse(context.Request.Query["offset"], out var offset) || offset < 0 || offset > m.Size)
@@ -245,7 +259,17 @@ public sealed class TransferReceiver : IAsyncDisposable
             read += count;
             session.Report(progress, bytes: count);
         }
-        if (Wire.Hash(buffer) != context.Request.Headers["X-Chunk-SHA256"].ToString())
+        return await CommitChunkAsync(session, partial, offset, buffer, context.Request.Headers["X-Chunk-SHA256"].ToString(), ct);
+    }
+
+    private async Task<ResumeState> CommitChunkAsync(ReceiveSession session, string partial, long offset, byte[] buffer,
+        string checksum, CancellationToken ct)
+    {
+        var m = session.Manifest;
+        var length = buffer.Length;
+        if (offset < 0 || offset > m.Size || length <= 0 || length > Wire.ChunkSize || length > m.Size - offset)
+            throw new InvalidDataException("数据块大小无效。");
+        if (Wire.Hash(buffer) != checksum)
             throw new InvalidDataException("数据块校验失败，未写入。");
         while (true)
         {
@@ -280,9 +304,12 @@ public sealed class TransferReceiver : IAsyncDisposable
     }
 
     /// <summary>Verify whole-file checksum and atomically move into place without replacing a file.</summary>
-    private async Task<ResumeState> FinishAsync(HttpContext context, CancellationToken ct)
+    private Task<ResumeState> FinishAsync(HttpContext context, CancellationToken ct) =>
+        FinishFileAsync(context.Request.Query["id"].ToString(), ct);
+
+    private async Task<ResumeState> FinishFileAsync(string id, CancellationToken ct)
     {
-        var (session, partial) = Lookup(context);
+        var (session, partial) = Lookup(id);
         var m = session.Manifest;
         progress?.Report(new(m.Name, TransferStage.VerifyingFile, m.Size, m.Size, ParallelChunks: session.ParallelChunks));
         if (new FileInfo(partial).Length != m.Size || await Wire.FileHashAsync(partial, ct) != m.Hash)
@@ -300,14 +327,15 @@ public sealed class TransferReceiver : IAsyncDisposable
     }
     public async ValueTask DisposeAsync()
     {
+        Interlocked.Exchange(ref outgoing, null)?.Completion.TrySetException(new IOException("反向发送服务已停止，请重新开始。"));
         var current = Interlocked.Exchange(ref app, null);
         if (current is not null)
         {
             using var shutdown = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             try { await current.StopAsync(shutdown.Token); }
-            finally { await current.DisposeAsync(); certificates.Dispose(); }
+            finally { await current.DisposeAsync(); certificates?.Dispose(); }
         }
-        else certificates.Dispose();
+        else certificates?.Dispose();
     }
 }
 

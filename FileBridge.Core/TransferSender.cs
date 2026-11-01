@@ -94,7 +94,7 @@ public static class TransferSender
             }
         }
     }
-    private static bool Retryable(Exception error, CancellationToken ct) => !ct.IsCancellationRequested && error switch
+    internal static bool Retryable(Exception error, CancellationToken ct) => !ct.IsCancellationRequested && error switch
     {
         TransferException e => e.Status >= 500 || e.Status is 408 or 429 || e.Status == 409 && e.Message.Contains("重新连接", StringComparison.Ordinal),
         HttpRequestException e when e.InnerException is AuthenticationException => false,
