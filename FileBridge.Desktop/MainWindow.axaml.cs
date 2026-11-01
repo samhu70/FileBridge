@@ -86,9 +86,14 @@ public sealed partial class MainWindow : Window
             return;
         }
         var percent = p.Total > 0 ? 100.0 * p.Completed / p.Total : 0;
-        SendStatus.Text = TransferDisplay.StageText(p, language) + " · " + p.FileName;
+        SendStatus.Text = TransferDisplay.StageText(p, language) + (p.FileName.Length > 0 ? " · " + p.FileName : "");
         SendProgress.Value = percent;
         SendPercent.Text = percent.ToString("0.0", language.Culture) + "%";
+        if (p.Stage == TransferStage.WaitingForPeer)
+        {
+            SendDetail.Text = language.Text("ReverseOfferReadyDetail");
+            return;
+        }
         SendDetail.Text = $"{FormatBytes(p.Completed)} / {FormatBytes(p.Total)}"
             + (p.BytesPerSecond > 0 ? $" · {FormatBytes((long)p.BytesPerSecond)}/s" : "")
             + " · " + TransferDisplay.ParallelMode(p.ParallelChunks, language);
@@ -130,6 +135,8 @@ public sealed partial class MainWindow : Window
         var now = Environment.TickCount64;
         if (progress.Stage == TransferStage.Receiving && now - lastReceiveUpdate < 100) return;
         lastReceiveUpdate = now;
+        if (reverseReceiving is not null)
+            receiveState = progress.Stage == TransferStage.Retrying ? "ReverseConnecting" : "ReverseConnected";
         receiveProgress = progress;
         RenderReceive();
     }

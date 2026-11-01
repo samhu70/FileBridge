@@ -44,6 +44,7 @@ public sealed record ResumeState(long Offset, string Prefix, bool Done = false, 
 public static class Wire
 {
     public const int ChunkSize = 4 * 1024 * 1024;
+    public const int ReverseChunkSize = 256 * 1024;
     public const int DefaultParallelChunks = 4;
     public const int MaxParallelChunks = 10;
     public const string PartsDirectory = ".filebridge-parts";

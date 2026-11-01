@@ -516,4 +516,16 @@
   <data name="Core.ReverseUnsupported" xml:space="preserve">
     <value>The other version does not support reverse transfers. Upgrade both clients.</value>
   </data>
+  <data name="Core.WaitingForPeer" xml:space="preserve">
+    <value>Waiting for receiver</value>
+  </data>
+  <data name="ReverseOfferReadyDetail" xml:space="preserve">
+    <value>Checksums are ready. The other person needs to connect using this computer's code and start receiving.</value>
+  </data>
+  <data name="ReverseConnected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Core.ReverseReadTimeout" xml:space="preserve">
+    <value>Timed out waiting for more file data. Reconnect to resume.</value>
+  </data>
 </root>

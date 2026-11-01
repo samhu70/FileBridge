@@ -52,7 +52,7 @@ public sealed partial class TransferReceiver
             selected.Add(manifest.Id, entry);
         }
         var descriptor = new ReverseOffer(Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)),
-            selected.Values.Select(f => f.Manifest).ToArray(), parallelChunks);
+            selected.Values.Select(f => f.Manifest).ToArray(), parallelChunks, Wire.ReverseChunkSize);
         if (JsonSerializer.SerializeToUtf8Bytes(descriptor).Length > 16 * 1024 * 1024)
             throw new InvalidDataException("反向发送的文件列表过大，请分批选择。");
         var offer = new OutgoingOffer(descriptor, selected, progress, ct);
@@ -61,7 +61,9 @@ public sealed partial class TransferReceiver
         try
         {
             if (app is null) throw new IOException("反向发送服务已停止，请重新开始。");
-            progress?.Report(new("", TransferStage.WaitingForData, ParallelChunks: 0));
+            foreach (var file in descriptor.Files)
+                progress?.Report(new(file.Name, TransferStage.WaitingForPeer, Total: file.Size, ParallelChunks: 0));
+            progress?.Report(new("", TransferStage.WaitingForPeer, ParallelChunks: 0));
             await offer.Completion.Task.WaitAsync(ct);
         }
         finally { Interlocked.CompareExchange(ref outgoing, null, offer); }
@@ -165,7 +167,13 @@ public sealed partial class TransferReceiver
                 offer.Sent[id] = (Math.Min(earlier.Initial, offset), earlier.Confirmed, earlier.Clock);
             else offer.Sent[id] = (offset, offset, Stopwatch.StartNew());
         }
-        var bytes = new byte[(int)Math.Min(Wire.ChunkSize, file.Manifest.Size - offset)];
+        var chunkLength = (int)Math.Min(Wire.ChunkSize, file.Manifest.Size - offset);
+        if (context.Request.Query.TryGetValue("length", out var requestedLength))
+        {
+            if (!int.TryParse(requestedLength, out chunkLength) || chunkLength <= 0 || chunkLength > Wire.ChunkSize || chunkLength > file.Manifest.Size - offset)
+                throw new InvalidDataException("数据块大小无效。");
+        }
+        var bytes = new byte[chunkLength];
         await source.ReadExactlyAsync(bytes, ct);
         CheckOfferedSource(offer, file);
         context.Response.ContentType = "application/octet-stream";
@@ -191,7 +199,20 @@ public sealed partial class TransferReceiver
         finally { gate.Release(); }
     }
 
-    internal async Task<ResumeState> WriteLocalAsync(string id, long offset, byte[] bytes, string hash, CancellationToken ct)
+    internal async Task<Action<int>> TrackLocalReadAsync(string id, CancellationToken ct)
+    {
+        await gate.WaitAsync(ct);
+        try
+        {
+            var (session, _) = Lookup(id);
+            session.Start();
+            return count => session.Report(progress, bytes: count);
+        }
+        finally { gate.Release(); }
+    }
+
+    internal async Task<ResumeState> WriteLocalAsync(string id, long offset, byte[] bytes, string hash, CancellationToken ct,
+        bool reportBytes = true)
     {
         ReceiveSession session;
         string partial;
@@ -199,7 +220,7 @@ public sealed partial class TransferReceiver
         try { (session, partial) = Lookup(id); }
         finally { gate.Release(); }
         session.Start();
-        session.Report(progress, bytes: bytes.Length);
+        if (reportBytes) session.Report(progress, bytes: bytes.Length);
         return await CommitChunkAsync(session, partial, offset, bytes, hash, ct);
     }
 

@@ -33,7 +33,7 @@ public static class ReverseTransfer
                     }
                     var streams = TransferSender.StreamsForSize(manifest.Size,
                         TransferSender.NegotiatedStreams(parallelChunks, offer.ParallelChunks));
-                    await DownloadAsync(client, offer.Id, manifest, local, streams, progress, ct);
+                    await DownloadAsync(client, offer.Id, manifest, local, streams, offer.ChunkSize, progress, ct);
                     break;
                 }
                 catch (Exception error) when (attempt < 9 && TransferSender.Retryable(error, ct))
@@ -50,6 +50,7 @@ public static class ReverseTransfer
     {
         var offer = await PostJsonAsync<ReverseOffer>(client, "v3/reverse/list", ct, 16 * 1024 * 1024);
         if (!Wire.ValidHash(offer.Id) || offer.ParallelChunks is < 1 or > Wire.MaxParallelChunks
+            || offer.ChunkSize is < Wire.ReverseChunkSize or > Wire.ChunkSize
             || offer.Files is null || offer.Files.Length == 0)
             throw new InvalidDataException("反向发送的文件列表无效。");
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -60,7 +61,7 @@ public static class ReverseTransfer
     }
 
     private static async Task DownloadAsync(HttpClient client, string offer, FileManifest manifest, TransferReceiver local,
-        int streams, IProgress<TransferProgress>? progress, CancellationToken ct)
+        int streams, int chunkSize, IProgress<TransferProgress>? progress, CancellationToken ct)
     {
         var state = await local.BeginLocalAsync(manifest, streams, false, ct);
         var query = $"?offer={offer}&id={manifest.Id}&parallelChunks={streams}";
@@ -76,6 +77,7 @@ public static class ReverseTransfer
                     state = await local.BeginLocalAsync(manifest, streams, true, ct);
                 }
             }
+            var reportRead = await local.TrackLocalReadAsync(manifest.Id, ct);
             using var downloading = CancellationTokenSource.CreateLinkedTokenSource(ct);
             var pending = new List<Task>(streams);
             try
@@ -83,7 +85,7 @@ public static class ReverseTransfer
                 var offset = state.Offset;
                 while (offset < manifest.Size)
                 {
-                    var count = (int)Math.Min(Wire.ChunkSize, manifest.Size - offset);
+                    var count = (int)Math.Min(chunkSize, manifest.Size - offset);
                     pending.Add(DownloadChunkAsync(offset, count));
                     offset += count;
                     if (pending.Count == streams)
@@ -107,7 +109,7 @@ public static class ReverseTransfer
                 {
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(downloading.Token);
                     timeout.CancelAfter(TimeSpan.FromMinutes(5));
-                    using var request = new HttpRequestMessage(HttpMethod.Post, "v3/reverse/chunk" + query + "&offset=" + offset);
+                    using var request = new HttpRequestMessage(HttpMethod.Post, "v3/reverse/chunk" + query + "&offset=" + offset + "&length=" + count);
                     using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
                     await CheckResponseAsync(response, false, timeout.Token);
                     if (response.Content.Headers.ContentLength != count
@@ -115,10 +117,12 @@ public static class ReverseTransfer
                         throw new InvalidDataException("数据块大小无效。");
                     var hash = values.SingleOrDefault();
                     if (!Wire.ValidHash(hash)) throw new InvalidDataException("数据块校验失败，未写入。");
-                    await using var body = await response.Content.ReadAsStreamAsync(timeout.Token);
+                    // Headers have arrived: the body is bounded by inactivity, not its total transfer duration.
+                    timeout.CancelAfter(Timeout.InfiniteTimeSpan);
+                    await using var body = await response.Content.ReadAsStreamAsync(downloading.Token);
                     var bytes = new byte[count];
-                    await body.ReadExactlyAsync(bytes, timeout.Token);
-                    await local.WriteLocalAsync(manifest.Id, offset, bytes, hash!, timeout.Token);
+                    await ReadChunkAsync(body, bytes, reportRead, TimeSpan.FromMinutes(5), downloading.Token);
+                    await local.WriteLocalAsync(manifest.Id, offset, bytes, hash!, downloading.Token, reportBytes: false);
                 }
                 catch { downloading.Cancel(); throw; }
             }
@@ -137,6 +141,26 @@ public static class ReverseTransfer
             catch (Exception error) when (attempt < 9 && TransferSender.Retryable(error, ct))
             { await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct); }
         }
+    }
+
+    internal static async Task ReadChunkAsync(Stream body, byte[] bytes, Action<int> reportRead, TimeSpan idleTimeout,
+        CancellationToken ct)
+    {
+        using var idle = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var read = 0;
+        try
+        {
+            while (read < bytes.Length)
+            {
+                idle.CancelAfter(idleTimeout);
+                var count = await body.ReadAsync(bytes.AsMemory(read), idle.Token);
+                if (count == 0) throw new EndOfStreamException();
+                read += count;
+                reportRead(count);
+            }
+        }
+        catch (OperationCanceledException error) when (!ct.IsCancellationRequested)
+        { throw new TransferException(408, "接收数据等待超时，请重新连接。", error); }
     }
 
     private static async Task<T> PostJsonAsync<T>(HttpClient client, string path, CancellationToken ct, int limit = 16384)

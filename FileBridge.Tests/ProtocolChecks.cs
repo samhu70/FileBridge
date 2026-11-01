@@ -28,6 +28,9 @@ internal static class ProtocolChecks
         Check(legacy is { Offset: 123, Prefix: "prefix", Done: false, ParallelChunks: 1 }, "legacy resume defaults changed");
         Check(Wire.ChunkSize == 4 * 1024 * 1024 && Wire.DefaultParallelChunks == 4 && Wire.MaxParallelChunks == 10
             && Wire.PartsDirectory == ".filebridge-parts", "v2 transfer defaults changed");
+        var oldOffer = JsonSerializer.Deserialize<ReverseOffer>(JsonSerializer.Serialize(new
+            { Id = new string('a', 64), Files = new[] { manifest }, ParallelChunks = 4 }));
+        Check(oldOffer?.ChunkSize == Wire.ChunkSize, "legacy reverse offer lost its four-MiB block size");
         Console.WriteLine("PASS fixed v2 protocol fixtures / fb2 invitation / partial-file identity / legacy resume defaults");
     }
 

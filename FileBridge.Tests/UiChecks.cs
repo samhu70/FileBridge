@@ -240,8 +240,12 @@ internal static class UiChecks
             await Until(() => Host<Button>("StopReceiveButton").IsEnabled, "reverse host listener startup");
             await reverseHost.AddPathsAsync([source]);
             HostClick("ReverseSendButton");
-            await Until(() => Host<TextBlock>("SendStatus").Text?.StartsWith(Localization.Current.Text("Core.WaitingForData"), StringComparison.Ordinal) == true,
+            await Until(() => Host<TextBlock>("SendStatus").Text == Localization.Current.Text("Core.WaitingForPeer"),
                 "reverse source offer");
+            Check(Host<ItemsControl>("FileList").Items.Cast<FileRow>().All(row => row.Status == Localization.Current.Text("Core.WaitingForPeer")),
+                "ready reverse offer still shows calculating checksum in its file rows");
+            Check(Host<TextBlock>("SendDetail").Text == Localization.Current.Text("ReverseOfferReadyDetail"),
+                "ready reverse offer did not explain that hashing is complete and the peer must connect");
             Check(!Host<Button>("StopReceiveButton").IsEnabled && Host<Button>("PauseButton").IsEnabled,
                 "reverse source can stop its listener without cancelling the offer");
             var hostCode = Host<TextBox>("ReceiveCode").Text;

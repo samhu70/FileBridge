@@ -16,6 +16,7 @@ internal static class ReverseChecks
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         var ct = timeout.Token;
+        await SlowReadChecksAsync(ct);
         var directory = Path.Combine(root, "reverse");
         Directory.CreateDirectory(directory);
         var source = Path.Combine(directory, "source.bin");
@@ -35,10 +36,28 @@ internal static class ReverseChecks
             using var offerCancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
             var sentEvents = new List<TransferProgress>();
             var sentGate = new object();
+            var prepared = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var offering = host.SendReverseAsync(files,
-                new InlineProgress(p => { lock (sentGate) sentEvents.Add(p); }), offerCancellation.Token, 10);
+                new InlineProgress(p =>
+                {
+                    lock (sentGate) sentEvents.Add(p);
+                    if (p.Stage == TransferStage.WaitingForPeer && p.FileName.Length == 0) prepared.TrySetResult();
+                }), offerCancellation.Token, 10);
+            await prepared.Task.WaitAsync(ct);
+            lock (sentGate) Check(files.All(file => sentEvents.Any(p => p.FileName == file.RelativeName && p.Stage == TransferStage.WaitingForPeer)),
+                "reverse offer ready state did not replace per-file hashing state");
             var offer = await WaitForOfferAsync(client, ct);
+            Check(offer.ChunkSize == Wire.ReverseChunkSize, "new reverse offers did not advertise smaller blocks");
             Check(offer.Files.Length == 2 && offer.Files.All(f => f.Name is "中文/large.bin" or "empty.bin"), "unselected file was offered");
+            using (var legacyChunk = await client.PostAsync($"v3/reverse/chunk?offer={offer.Id}&id={manifest.Id}&offset=0&parallelChunks=2", null, ct))
+            {
+                Check(legacyChunk.IsSuccessStatusCode && legacyChunk.Content.Headers.ContentLength == Wire.ChunkSize,
+                    "an old receiver without a length parameter no longer receives four-MiB chunks");
+                Check((await legacyChunk.Content.ReadAsByteArrayAsync(ct)).SequenceEqual(bytes[..Wire.ChunkSize]),
+                    "legacy reverse chunk contents changed");
+            }
+            using (var badLength = await client.PostAsync($"v3/reverse/chunk?offer={offer.Id}&id={manifest.Id}&offset=0&length=0", null, ct))
+                Check(badLength.StatusCode == HttpStatusCode.BadRequest, "reverse chunk accepted invalid length");
             using (var wrong = TransferSender.CreateClient(host.Invitation with { Token = new string('0', 64) }))
             using (var denied = await wrong.PostAsync("v3/reverse/list", null, ct))
                 Check(denied.StatusCode == HttpStatusCode.Unauthorized, "reverse listing bypassed authentication");
@@ -191,7 +210,15 @@ internal static class ReverseChecks
                 if (mode == "whole") chunk[0] ^= 0xff;
                 context.Response.ContentLength = chunk.Length;
                 context.Response.Headers["X-Chunk-SHA256"] = mode == "chunk" ? new string('0', 64) : Wire.Hash(chunk);
-                await context.Response.Body.WriteAsync(chunk, ct);
+                if (mode == "slow")
+                {
+                    for (var position = 0; position < chunk.Length; position += 65536)
+                    {
+                        await context.Response.Body.WriteAsync(chunk.AsMemory(position, Math.Min(65536, chunk.Length - position)), ct);
+                        await Task.Delay(20, ct);
+                    }
+                }
+                else await context.Response.Body.WriteAsync(chunk, ct);
             }
             else if (context.Request.Path == "/v3/reverse/prefix")
             {
@@ -226,6 +253,59 @@ internal static class ReverseChecks
             "reverse transient network failure did not retry from the verified prefix");
         Check(receiptFailed, "completion receipt retry was not exercised");
         Console.WriteLine("PASS reverse transient HTTP failure / automatic retry / verified prefix reuse / final receipt retry after offer withdrawal");
+        mode = "slow";
+        var reading = new List<TransferProgress>();
+        var slowDestination = Path.Combine(directory, "slow-received");
+        await ReverseTransfer.ReceiveAsync(invite.Encode(), slowDestination, new InlineProgress(reading.Add), ct, 1);
+        Check(reading.Any(p => p.Stage == TransferStage.Receiving && p.Completed == 0 && p.BytesPerSecond > 0)
+            && await Wire.FileHashAsync(Path.Combine(slowDestination, manifest.Name), ct) == manifest.Hash,
+            "slow network reads were hidden until a whole chunk was committed");
+        Console.WriteLine("PASS reverse slow HTTPS / in-flight speed before first verified chunk / final checksum");
+    }
+
+    private static async Task SlowReadChecksAsync(CancellationToken ct)
+    {
+        var expected = RandomNumberGenerator.GetBytes(8192);
+        var actual = new byte[expected.Length];
+        var count = 0;
+        using (var slow = new DelayedReadStream(expected, TimeSpan.FromMilliseconds(80), 512))
+            await ReverseTransfer.ReadChunkAsync(slow, actual, n => count += n, TimeSpan.FromMilliseconds(500), ct);
+        Check(actual.SequenceEqual(expected) && count == expected.Length,
+            "a progressing read longer than the idle timeout was aborted or miscounted");
+        var idleTimedOut = false;
+        using (var idle = new DelayedReadStream([1], TimeSpan.FromSeconds(1), 1))
+        {
+            try { await ReverseTransfer.ReadChunkAsync(idle, new byte[1], _ => { }, TimeSpan.FromMilliseconds(80), ct); }
+            catch (TransferException error) when (error.Status == 408)
+            { idleTimedOut = TransferSender.Retryable(error, ct); }
+        }
+        Check(idleTimedOut, "a stalled read did not produce a retryable inactivity timeout");
+        using (var pause = CancellationTokenSource.CreateLinkedTokenSource(ct))
+        using (var slow = new DelayedReadStream([1], TimeSpan.FromSeconds(1), 1))
+        {
+            pause.CancelAfter(50);
+            var paused = false;
+            try { await ReverseTransfer.ReadChunkAsync(slow, new byte[1], _ => { }, TimeSpan.FromSeconds(2), pause.Token); }
+            catch (OperationCanceledException) when (pause.IsCancellationRequested) { paused = true; }
+            Check(paused, "user pause was converted into an inactivity failure");
+        }
+        using (var truncated = new MemoryStream([1]))
+        {
+            var ended = false;
+            try { await ReverseTransfer.ReadChunkAsync(truncated, new byte[2], _ => { }, TimeSpan.FromSeconds(1), ct); }
+            catch (EndOfStreamException) { ended = true; }
+            Check(ended, "truncated chunk was treated as complete");
+        }
+        Console.WriteLine("PASS reverse sliding idle timeout / continuously progressing slow reads / true stalls retry / user pause / truncated body");
+    }
+
+    private sealed class DelayedReadStream(byte[] bytes, TimeSpan delay, int slice) : MemoryStream(bytes, writable: false)
+    {
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(delay, cancellationToken);
+            return await base.ReadAsync(buffer[..Math.Min(buffer.Length, slice)], cancellationToken);
+        }
     }
 
     private static async Task MustFail(Func<Task> action, string message)

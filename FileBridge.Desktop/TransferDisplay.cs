@@ -11,6 +11,7 @@ internal static class TransferDisplay
         TransferStage.CalculatingHash => language.Text("Core.CalculatingHash"),
         TransferStage.VerifyingResume => language.Text("Core.ResumeCheck"),
         TransferStage.WaitingForData => language.Text("Core.WaitingForData"),
+        TransferStage.WaitingForPeer => language.Text("Core.WaitingForPeer"),
         TransferStage.Receiving => language.Text("Core.Receiving"),
         TransferStage.VerifyingFile => language.Text("Core.Verifying"),
         TransferStage.ReceiveComplete => language.Text("Core.ReceiveComplete"),
