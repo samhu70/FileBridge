@@ -1,5 +1,8 @@
 using FileBridge.Core;
 using FileBridge.Desktop;
+using System.Formats.Asn1;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace FileBridge.Tests;
 
@@ -7,6 +10,34 @@ internal static class LifetimeChecks
 {
     public static async Task RunAsync(string root)
     {
+        var freshIdentity = ReceiverIdentity.Create();
+        var freshPfx = freshIdentity.Pfx.ToArray();
+        using (var transport = freshIdentity.LoadCertificate())
+        {
+            Check(transport.Extensions.All(extension => extension.Oid?.Value is { Length: > 0 } oid
+                && oid.Split('.').All(arc => uint.TryParse(arc, out _))), "TLS certificate contains Windows-incompatible extension OIDs");
+            Check(transport.Extensions.OfType<X509EnhancedKeyUsageExtension>().Single().EnhancedKeyUsages
+                .Cast<System.Security.Cryptography.Oid>().Any(oid => oid.Value == "1.3.6.1.5.5.7.3.1"), "TLS server authentication usage was lost");
+            Check(freshIdentity.PublicKeyPin && TransferSender.CertificateMatches(freshIdentity.InvitationFor("127.0.0.1", 8787), transport),
+                "Windows-compatible TLS certificate changed the persistent public key");
+        }
+        Check(freshIdentity.Pfx.SequenceEqual(freshPfx), "transport compatibility changed saved credentials");
+        using (var key = ECDsa.Create(ECCurve.NamedCurves.nistP256))
+        {
+            foreach (var decoy in new[] { false, true })
+            {
+                var request = new CertificateRequest("CN=FileBridge", key, HashAlgorithmName.SHA256);
+                if (decoy)
+                {
+                    var payload = new AsnWriter(AsnEncodingRules.DER);
+                    payload.WriteObjectIdentifier("2.25.113014805965853602799128767528523782477");
+                    request.CertificateExtensions.Add(new X509Extension(new Oid("1.2.3.4", null), payload.Encode(), false));
+                }
+                using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(1));
+                var unmarked = new ReceiverIdentity(freshIdentity.Token, certificate.Export(X509ContentType.Pfx));
+                Check(!unmarked.PublicKeyPin, "absent mode marker or decoy inside another extension enabled public-key pinning");
+            }
+        }
         var now = DateTimeOffset.UtcNow;
         var identity = ReceiverIdentity.Create(now.AddYears(-3), now.AddYears(-2));
         var originalPfx = identity.Pfx.ToArray();

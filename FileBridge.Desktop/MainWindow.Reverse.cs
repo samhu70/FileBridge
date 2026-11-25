@@ -26,7 +26,6 @@ public sealed partial class MainWindow
             var directory = ReceiveDirectory.Text?.Trim() ?? "";
             if (directory.Length == 0) throw new InvalidOperationException("请选择保存位置。");
             if (!SaveConnectionPreferences()) return;
-            receiverLease = connections.AcquireReceiverLease();
             receiveProgress = null;
             receiveState = "ReverseConnecting";
             receiveStatus = "ReverseConnecting";
@@ -46,8 +45,6 @@ public sealed partial class MainWindow
             reverseDownload = null;
             reverseReceiving.Dispose();
             reverseReceiving = null;
-            receiverLease?.Dispose();
-            receiverLease = null;
             receiveState = "ReceiverStoppedState";
             RenderReceive();
             SetReceiverControls();

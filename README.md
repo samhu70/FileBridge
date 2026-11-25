@@ -11,13 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.8 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.8/FileBridge-windows-x64-2.5.8-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.8 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.8/FileBridge-macOS-arm64-2.5.8-framework-dependent.zip) |
-| SHA-256 | 2.5.8 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.8/SHA256SUMS-2.5.8.txt) |
+| Windows x64 | 2.5.9 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.9/FileBridge-windows-x64-2.5.9-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.9 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.9/FileBridge-macOS-arm64-2.5.9-framework-dependent.zip) |
+| SHA-256 | 2.5.9 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.9/SHA256SUMS-2.5.9.txt) |
 
-**2.5.8 新增 PayPal 支持入口**：软件底部和本页均可选择 Stripe 或 PayPal 自愿打赏，提示支持中英文。保留慢速发送剩余时间估算、自动重连续传、最多 10 路和 SHA-256 校验。发布包由 `v2.5.8` 标签对应源码构建。
+**2.5.9 自动建码、多开接收与 Windows 证书修复**：首次进入接收页自动创建连接码；多实例使用独立配置，端口被占用时自动选择空闲端口并更新连接码；修复 Windows 的 `oid.Value` 证书扩展读取异常。保留已有身份、连接码、断点数据和同密钥 TLS 续签。发布包由 `v2.5.9` 标签对应源码构建。
 
-**2.5.8 adds PayPal support:** choose Stripe or PayPal in the app footer or this README to leave an optional tip, with Chinese and English hints. Slow-link sender ETA, automatic reverse resume, ten streams and SHA-256 are preserved. Downloads are built from `v2.5.8`.
+**2.5.9 adds automatic code creation, multiple receivers and a Windows certificate fix:** opening the receive tab creates a missing code. Instances use separate profiles and automatically select an available receiving port when needed, updating the code. Windows certificate extension handling avoids the `oid.Value` error while preserving identities, saved codes, partial files and same-key TLS renewal. Downloads are built from `v2.5.9`.
 
 ## 中文
 
@@ -29,7 +29,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 - **跨平台传输**：在 Windows 与 macOS 之间发送文件或整个文件夹，支持中文文件名和目录。
 - **无需应用账号**：FileBridge 本身无需注册；通过局域网、Tailscale 或其他已连通的 VPN 传输，不依赖 FileBridge 中转服务器。
-- **连接码配对与保留**：发送端记住输入；接收端保存认证凭据、地址、端口和目录，重启后可继续沿用。两端均提供手动更换入口。
+- **连接码配对与保留**：首次进入接收页自动创建缺少的连接码；发送端记住输入，接收端保存认证凭据、地址、端口和目录，重启后可继续沿用。两端均提供手动更换入口。
 - **暂停与断点续传**：暂停、网络中断或接收端重启后，可从已校验的连续位置恢复。接收端重启可沿用仍有效的原连接码。
 - **并行分块**：发送端可选 1–10 路上限，默认 4 路。文件不超过 4 MiB 时自动单路；更大文件按分块数、用户上限和对端能力取较小值。例如默认上限下，6 MiB 用 2 路，20 MiB 用 4 路。
 - **完整性校验**：普通上传每块 4 MiB；新版之间反向下载优先使用 256 KiB 分块。分块和最终文件都校验 SHA-256；续传时也检查已有数据。
@@ -74,12 +74,13 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 ### 连接码的保存与更换
 
 - **发送端**：输入自动保存。点击「更换连接码」并粘贴新的接收端连接码；发送期间不能更换。
-- **接收端**：重启恢复地址、端口、保存目录和连接码，但不会自动开始监听。点击「开始接收」后沿用旧码。
+- **接收端**：首次进入「接收文件」页时，没有连接码会自动创建并保存。重启恢复地址、端口、保存目录和连接码，但不会自动开始监听。点击「开始接收」后沿用已有连接码。
 - **手动换码**：先停止接收，再点击「重新创建连接码」，然后开始接收并分享新码。旧码失效，断点数据保留。
 - **长期使用**：地址、端口和本地凭据不变时，长期码没有日历到期时间。证书续签、停止接收或重启都不会更换公钥身份或令牌。损坏凭据会提示手动处理，不自动替换。
 - **从旧版升级**：旧 `fb2_` 码不会被自动改写，仍按旧证书有效期使用；手动重新创建一次即可得到 `fb3_` 长期码。长期码要求收发两端均升级至 2.5.0 或更新版本。没有保存过的旧凭据无法恢复。
 - 连接信息保存在当前用户的本地应用数据目录 `FileBridge/connections.json`。该文件含访问令牌和证书私钥，不要分享或上传。Unix 使用文件 `0600`、目录 `0700`；Windows 使用用户配置目录的继承权限。
-- 共用配置的其他窗口不能同时启动接收或重新创建凭据，以免旧监听仍使用已经更换的身份。
+- **多开接收**：多个实例自动使用独立配置和连接码，新增实例的默认接收目录带编号。启动接收时优先使用界面中的端口；端口已被占用时自动选择空闲端口，更新并保存实际端口和连接码。请分享各窗口当前显示的连接码。
+- 第一个实例继续使用 `FileBridge/connections.json`；其他实例的配置保存在 `FileBridge/instances/2/connections.json` 等编号目录，关闭后可复用并恢复原配置。各实例手动换码互不影响。
 
 ### 使用边界
 
@@ -157,12 +158,13 @@ Pause and resume keep the verified contiguous prefix in `.filebridge-parts`. New
 ### Saved codes and manual changes
 
 - **Sender:** input is saved automatically. Select **Change code** and paste the new receiver code. Changes are disabled during sending.
-- **Receiver:** the code, address, port and destination are restored. Restoring them does not start a listener; select **Start receiving** first.
+- **Receiver:** opening the receive tab automatically creates and saves a missing code. The code, address, port and destination are restored on restart. Restoring them does not start a listener; select **Start receiving** first.
 - **Manual recreation:** stop receiving, select **Recreate code**, then start receiving and share the new code. The old code becomes invalid; partial files are kept.
 - Long-lived codes have no calendar expiration while their endpoint and local credentials stay the same. TLS renewal and app restarts do not rotate the public key or token. Damaged credentials require manual recreation and are never replaced silently.
 - Existing `fb2_` codes are not automatically rewritten and retain their old certificate validity. Manually recreate once to obtain a long-lived `fb3_` code. Both peers must use 2.5.0 or newer for long-lived codes. Credentials that an old version never saved cannot be recovered.
 - Details are stored in `FileBridge/connections.json` under the current user's local application data folder. This file contains access tokens and a certificate private key: do not share or upload it. Unix permissions are `0600` for the file and `0700` for its directory; Windows inherits the user profile directory permissions.
-- App instances sharing the same profile cannot receive or recreate credentials simultaneously, so a code change cannot leave another profile listener using an old identity.
+- **Multiple receivers:** instances use separate profiles and codes, with numbered default receive folders. Receiving first tries the displayed port; if it is already in use, the app selects an available port and saves the updated port and code. Share the code currently shown in each window.
+- The first instance uses `FileBridge/connections.json`; additional instances use numbered folders such as `FileBridge/instances/2/connections.json`. Closing a window makes its profile available for reuse, retaining its saved settings. Recreating one instance's code does not change another instance's credentials.
 
 ### Limits
 

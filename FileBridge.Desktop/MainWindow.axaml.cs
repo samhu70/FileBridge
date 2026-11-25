@@ -6,6 +6,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using FileBridge.Core;
+using Microsoft.AspNetCore.Connections;
 
 namespace FileBridge.Desktop;
 
@@ -34,7 +35,7 @@ public sealed partial class MainWindow : Window
 
     internal MainWindow(string settingsFile)
     {
-        connections = new ConnectionStore(settingsFile);
+        connections = ConnectionStore.OpenAvailable(settingsFile, out instanceLease, out var instanceNumber);
         InitializeComponent();
         FileList.ItemsSource = rows;
         StreamPicker.ItemsSource = Enumerable.Range(1, Wire.MaxParallelChunks).ToArray();
@@ -43,6 +44,7 @@ public sealed partial class MainWindow : Window
         ReceiveAddress.Text = detectedAddress;
         // Keep the existing folder name in every language so saved partial files remain discoverable.
         ReceiveDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileBridge 接收");
+        if (instanceNumber > 1) ReceiveDirectory.Text += $" ({instanceNumber})";
         InitializeConnections();
         ApplyLanguage();
         sendTimer.Tick += (_, _) => RenderSend();
@@ -327,12 +329,27 @@ public sealed partial class MainWindow : Window
             var directory = ReceiveDirectory.Text?.Trim() ?? "";
             if (directory.Length == 0) throw new InvalidOperationException("请选择保存位置。");
             if (!SaveConnectionPreferences()) return;
-            receiverLease = connections.AcquireReceiverLease();
             var oldIdentity = storedIdentity;
             storedIdentity = await Task.Run(() => connections.GetIdentity());
             var identity = storedIdentity;
             var progress = new Progress<TransferProgress>(UpdateReceiveProgress);
-            receiver = await Task.Run(() => TransferReceiver.StartAsync(address, port, directory, progress, identity: identity));
+            try { receiver = await Task.Run(() => TransferReceiver.StartAsync(address, port, directory, progress, identity: identity)); }
+            catch (IOException error) when (error.InnerException is AddressInUseException)
+            {
+                receiver = await Task.Run(() => TransferReceiver.StartAsync(address, 0, directory, progress, identity: identity));
+            }
+            var actualPort = new Uri(receiver.Invitation.Url).Port;
+            if (actualPort != port)
+            {
+                ReceivePort.Text = actualPort.ToString(CultureInfo.InvariantCulture);
+                if (!SaveConnectionPreferences())
+                {
+                    await receiver.DisposeAsync();
+                    receiver = null;
+                    RefreshInvitationPreview();
+                    return;
+                }
+            }
             ReceiveCode.Text = receiver.Invitation.Encode();
             receiveState = "ReceiverStarted";
             receiveStatus = "WaitingForSender";
@@ -340,12 +357,12 @@ public sealed partial class MainWindow : Window
             RenderReceive();
             CopyButton.IsEnabled = true;
             receiveTimer.Start();
-            Message(oldIdentity is not null && oldIdentity.Token != identity.Token ? "InvitationUpdated" : "ShareInvitation");
+            Message(actualPort != port ? "ReceivePortChanged"
+                : oldIdentity is not null && oldIdentity.Token != identity.Token ? "InvitationUpdated" : "ShareInvitation");
         }
         catch (Exception error) { ShowError(error, "ReceiveStartFailed"); }
         finally
         {
-            if (receiver is null) { receiverLease?.Dispose(); receiverLease = null; }
             receiverChanging = false;
             SetReceiverControls();
         }
@@ -366,8 +383,6 @@ public sealed partial class MainWindow : Window
         {
             receiveTimer.Stop();
             receiver = null;
-            receiverLease?.Dispose();
-            receiverLease = null;
             receiverChanging = false;
             SetReceiverControls();
             receiveState = "ReceiverStoppedState";

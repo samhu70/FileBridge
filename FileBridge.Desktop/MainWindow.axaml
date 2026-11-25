@@ -31,7 +31,7 @@
       </StackPanel>
     </Grid>
     <Border Grid.Row="1" Classes="card" Padding="8,4,8,12">
-      <TabControl>
+      <TabControl x:Name="TransferTabs">
         <TabItem>
           <TabItem.Header><TextBlock Text="{DynamicResource Text.SendTab}" FontSize="16" FontWeight="SemiBold" /></TabItem.Header>
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

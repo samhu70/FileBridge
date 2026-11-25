@@ -183,6 +183,9 @@
   <data name="ShareInvitation" xml:space="preserve">
     <value>接收已启动，可沿用当前连接码。只分享给预期发送方，并保持应用开启。</value>
   </data>
+  <data name="ReceivePortChanged" xml:space="preserve">
+    <value>原端口已被占用，已使用空闲端口开始接收，请分享更新后的连接码。</value>
+  </data>
   <data name="ReceiveStopped" xml:space="preserve">
     <value>接收已停止，原连接码保留；下次可沿用或手动重新创建，断点数据保留。</value>
   </data>

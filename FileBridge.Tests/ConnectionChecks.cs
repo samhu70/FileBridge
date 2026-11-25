@@ -8,6 +8,7 @@ internal static class ConnectionChecks
 {
     public static async Task RunAsync(string root)
     {
+        CheckInstanceProfiles(root);
         var path = Path.Combine(root, "connection-state", "connections.json");
         var store = new ConnectionStore(path);
         var identity = store.GetIdentity();
@@ -87,6 +88,42 @@ internal static class ConnectionChecks
         Check(identity.InvitationFor("127.0.0.1", port) != identity.InvitationFor("127.0.0.2", port), "address change did not change code");
         Check(!new ReceiverIdentity("invalid", [1]).IsUsable, "invalid identity accepted");
         Console.WriteLine("PASS saved credentials/preferences / old code survives HTTPS restart and resume / manual rotation rejects old pin+token / no automatic identity rotation / corruption / permissions / stale and concurrent saves");
+    }
+
+    private static void CheckInstanceProfiles(string root)
+    {
+        var path = Path.Combine(root, "instance-state", "connections.json");
+        var first = ConnectionStore.OpenAvailable(path, out var firstLease, out var firstNumber);
+        using (firstLease)
+        {
+            var firstIdentity = first.GetIdentity();
+            var second = ConnectionStore.OpenAvailable(path, out var secondLease, out var secondNumber);
+            var secondIdentity = second.GetIdentity();
+            second.SavePreferences(new(Port: "23456", Directory: "second destination"));
+            var third = ConnectionStore.OpenAvailable(path, out var thirdLease, out var thirdNumber);
+            using (thirdLease)
+            {
+                Check(firstNumber == 1 && secondNumber == 2 && thirdNumber == 3, "instance slots overlap");
+                Check(firstIdentity.Token != secondIdentity.Token && third.GetIdentity().Token != secondIdentity.Token,
+                    "instances share receiver credentials");
+                first.GetIdentity(recreate: true);
+                Check(second.GetIdentity().Token == secondIdentity.Token, "rotation changed another instance's credentials");
+                secondLease.Dispose();
+                var reopened = ConnectionStore.OpenAvailable(path, out var reopenedLease, out var reopenedNumber);
+                using (reopenedLease)
+                {
+                    Check(reopenedNumber == 2 && reopened.GetIdentity().Token == secondIdentity.Token
+                        && reopened.Load() is { Port: "23456", Directory: "second destination" },
+                        "reused instance slot lost identity or preferences");
+                }
+            }
+        }
+        using (var legacyLease = new ConnectionStore(path).AcquireReceiverLease())
+        {
+            _ = ConnectionStore.OpenAvailable(path, out var nextLease, out var number);
+            using (nextLease) Check(number == 2, "running legacy receiver did not reserve the primary profile");
+        }
+        Console.WriteLine("PASS independent instance slots / saved identity and port / rotation isolation / slot reuse / legacy receiver lock");
     }
 
     private static async Task<ResumeState> Begin(HttpClient client, FileManifest manifest)

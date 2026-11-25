@@ -15,6 +15,7 @@ try
 {
     if (args.Contains("--ui")) { UiChecks.Run(root); return; }
     if (args.Contains("--reverse")) { await ReverseChecks.RunAsync(root); return; }
+    if (args.Contains("--lifetime")) { await LifetimeChecks.RunAsync(root); return; }
     ProtocolChecks.Run();
     await ConnectionChecks.RunAsync(root);
     await LifetimeChecks.RunAsync(root);
@@ -33,6 +34,11 @@ try
     await PartialChunkTelemetry();
     if (args.Contains("--large")) await LargeTransfer();
     Console.WriteLine("ALL PASS");
+}
+catch (Exception error)
+{
+    Console.Error.WriteLine(error);
+    Environment.ExitCode = 1;
 }
 finally
 {

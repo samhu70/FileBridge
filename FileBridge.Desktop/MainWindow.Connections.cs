@@ -12,7 +12,7 @@ public sealed partial class MainWindow
     private readonly ConnectionStore connections;
     private readonly DispatcherTimer saveConnectionsTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
     private ReceiverIdentity? storedIdentity;
-    private FileStream? receiverLease;
+    private readonly FileStream instanceLease;
     private bool receiverChanging;
     private bool invitationPreviewPending;
 
@@ -32,6 +32,13 @@ public sealed partial class MainWindow
         }
         catch (Exception error) { ShowError(error); }
 
+        TransferTabs.SelectionChanged += async (_, e) =>
+        {
+            if (e.Source == TransferTabs && TransferTabs.SelectedIndex == 1 && storedIdentity is null
+                && ReverseReceiveMode.IsChecked != true)
+                await CreateReceiverCodeAsync(recreate: false);
+        };
+
         saveConnectionsTimer.Tick += (_, _) =>
         {
             saveConnectionsTimer.Stop();
@@ -41,7 +48,7 @@ public sealed partial class MainWindow
         foreach (var field in new[] { SendCode, ReceiveAddress, ReceivePort, ReceiveDirectory, ReverseReceiveCode })
             field.TextChanged += (_, _) =>
             {
-                if (field == ReceiveAddress || field == ReceivePort)
+                if (receiver is null && (field == ReceiveAddress || field == ReceivePort))
                 {
                     invitationPreviewPending = true;
                     ReceiveCode.Text = "";
@@ -118,6 +125,9 @@ public sealed partial class MainWindow
     }
 
     private async void RecreateReceiverCode(object? sender, RoutedEventArgs e)
+        => await CreateReceiverCodeAsync(recreate: true);
+
+    private async Task CreateReceiverCodeAsync(bool recreate)
     {
         if (receiver is not null || reverseReceiving is not null || receiverChanging) return;
         receiverChanging = true;
@@ -125,11 +135,10 @@ public sealed partial class MainWindow
         try
         {
             _ = ReadReceiveEndpoint();
-            using var lease = connections.AcquireReceiverLease();
-            storedIdentity = await Task.Run(() => connections.GetIdentity(recreate: true));
+            storedIdentity = await Task.Run(() => connections.GetIdentity(recreate));
             if (!SaveConnectionPreferences()) return;
             RefreshInvitationPreview();
-            Message("ReceiverCodeRecreated");
+            if (recreate) Message("ReceiverCodeRecreated");
         }
         catch (Exception error) { ShowError(error); }
         finally { receiverChanging = false; SetReceiverControls(); }
@@ -139,9 +148,10 @@ public sealed partial class MainWindow
     {
         try
         {
+            while (receiverChanging) await Task.Delay(20);
             if (reverseDownload is not null) { try { await reverseDownload; } catch { } }
             if (receiver is not null) await receiver.DisposeAsync();
         }
-        finally { receiverLease?.Dispose(); receiverLease = null; }
+        finally { instanceLease.Dispose(); }
     }
 }

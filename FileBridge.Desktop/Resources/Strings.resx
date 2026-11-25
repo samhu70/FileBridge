@@ -183,6 +183,9 @@
   <data name="ShareInvitation" xml:space="preserve">
     <value>Receiving is enabled with the current code. Share it only with the intended sender and keep the app open.</value>
   </data>
+  <data name="ReceivePortChanged" xml:space="preserve">
+    <value>The port was in use. Receiving started on an available port; share the updated connection code.</value>
+  </data>
   <data name="ReceiveStopped" xml:space="preserve">
     <value>Receiving stopped. Keep using the saved code or recreate it manually. Partial files are kept.</value>
   </data>

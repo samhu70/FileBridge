@@ -36,10 +36,29 @@ internal static class UiChecks
     public static async Task CheckAsync(MainWindow window)
     {
         Check(SynchronizationContext.Current is AvaloniaSynchronizationContext, "UI context not installed");
+        await CheckMultiInstanceAsync();
         T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
         void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         var tabs = window.GetVisualDescendants().OfType<TabControl>().Single();
+        var connectionStore = new ConnectionStore(Path.Combine(Root, "ui-connections", "connections.json"));
+        Check(connectionStore.Load().Identity is null && string.IsNullOrEmpty(Control<TextBox>("ReceiveCode").Text),
+            "fresh launch created receiver credentials before opening the receive tab");
+        Control<TextBox>("ReceiveAddress").Text = "127.0.0.1";
+        tabs.SelectedIndex = 1;
+        await Until(() => Control<Button>("ReceiveButton").IsEnabled, "first receive tab code creation");
+        var firstCode = Control<TextBox>("ReceiveCode").Text;
+        Check(!string.IsNullOrEmpty(firstCode) && Control<Button>("CopyButton").IsEnabled,
+            "first receive tab visit did not automatically create a copyable code");
+        Check(connectionStore.Load().Identity?.InvitationFor("127.0.0.1", 8787).Encode() == firstCode,
+            "automatically created receiver code was not saved");
+        Check(!Control<Button>("StopReceiveButton").IsEnabled, "opening the receive tab started a listener");
+        tabs.SelectedIndex = 0;
+        tabs.SelectedIndex = 1;
+        await Until(() => Control<Button>("ReceiveButton").IsEnabled, "repeat receive tab visit");
+        Check(Control<TextBox>("ReceiveCode").Text == firstCode, "repeat receive tab visit replaced the code");
+        tabs.SelectedIndex = 0;
+        Console.WriteLine("PASS UI first receive tab creates and saves a copyable code / repeat visit preserves code / listener stays off");
         var originalWidth = window.Width;
         string[] layoutKeys = ["SendTab", "ReceiveTab", "OpenReceiveDirectory", "ReverseSend", "ReverseSendHelp",
             "ReverseReceiveMode", "ReversePeerCode", "ReverseCodeHint", "ReverseReceiveHelp"];
@@ -238,7 +257,8 @@ internal static class UiChecks
             Host<TextBox>("ReceiveDirectory").Text = Path.Combine(Root, "reverse-host-received");
             HostClick("ReceiveButton");
             await Until(() => Host<Button>("StopReceiveButton").IsEnabled, "reverse host listener startup");
-            await using (var file = File.Create(source)) file.SetLength(Wire.ChunkSize * 10L);
+            // Leave time to pause before a fast loopback transfer has already completed.
+            await using (var file = File.Create(source)) file.SetLength(Wire.ChunkSize * 40L);
             Host<ComboBox>("StreamPicker").SelectedIndex = 9;
             await reverseHost.AddPathsAsync([source]);
             HostClick("ReverseSendButton");
@@ -281,6 +301,7 @@ internal static class UiChecks
             renderSend.Invoke(reverseHost, null);
             Check(Host<TextBlock>("SendEstimate").Text == Localization.Current.Text("TimeWaiting"), "expired sender estimate did not clear");
             sendStamp.SetValue(reverseHost, originalStamp);
+            Check(Peer<ProgressBar>("ReceiveProgress").Value < 100, "reverse transfer completed before the pause check");
             HostClick("PauseButton");
             await Until(() => Host<Button>("ReverseSendButton").IsEnabled
                 && Peer<TextBlock>("ReceiveState").Text == Localization.Current.Text("Core.WaitingForSender"),
@@ -312,6 +333,81 @@ internal static class UiChecks
         finally { reverseHost.Close(); reversePeer.Close(); }
         Console.WriteLine("PASS UI reverse send / outgoing-only receive / pause and resume / checksum / peer-code persistence / controls restored");
 
+    }
+
+    private static async Task CheckMultiInstanceAsync()
+    {
+        var settings = Path.Combine(Root, "multi-instance", "connections.json");
+        var first = new MainWindow(settings);
+        var second = new MainWindow(settings);
+        first.Show();
+        second.Show();
+        T Control<T>(MainWindow window, string name) where T : Control => window.FindControl<T>(name)!;
+        void Click(MainWindow window, string name) => Control<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var firstDestination = Path.Combine(Root, "multi-first");
+        var secondDestination = Path.Combine(Root, "multi-second");
+        try
+        {
+            Check(Control<TextBox>(first, "ReceiveDirectory").Text != Control<TextBox>(second, "ReceiveDirectory").Text,
+                "new instances share the default receive directory");
+            using var occupied = new TcpListener(IPAddress.Loopback, 0);
+            occupied.Start();
+            var occupiedPort = ((IPEndPoint)occupied.LocalEndpoint).Port;
+            Control<TextBox>(first, "ReceiveAddress").Text = "127.0.0.1";
+            Control<TextBox>(first, "ReceivePort").Text = occupiedPort.ToString();
+            Control<TextBox>(first, "ReceiveDirectory").Text = firstDestination;
+            Click(first, "ReceiveButton");
+            await Until(() => Control<Button>(first, "StopReceiveButton").IsEnabled, "occupied external port fallback");
+            var firstCode = Control<TextBox>(first, "ReceiveCode").Text!;
+            var firstPort = new Uri(Invitation.Parse(firstCode).Url).Port;
+            Check(firstPort != occupiedPort && Control<TextBox>(first, "ReceivePort").Text == firstPort.ToString()
+                && new ConnectionStore(settings).Load().Port == firstPort.ToString()
+                && Control<TextBlock>(first, "AppMessage").Text == Localization.Current.Text("ReceivePortChanged"),
+                "fallback port was not displayed, saved, or explained");
+
+            Control<TextBox>(second, "ReceiveAddress").Text = "127.0.0.1";
+            Control<TextBox>(second, "ReceivePort").Text = firstPort.ToString();
+            Control<TextBox>(second, "ReceiveDirectory").Text = secondDestination;
+            Click(second, "ReceiveButton");
+            await Until(() => Control<Button>(second, "StopReceiveButton").IsEnabled, "second instance receiver startup");
+            var secondCode = Control<TextBox>(second, "ReceiveCode").Text!;
+            var secondPort = new Uri(Invitation.Parse(secondCode).Url).Port;
+            Check(secondPort != firstPort && Invitation.Parse(secondCode).Token != Invitation.Parse(firstCode).Token,
+                "simultaneous instances share a port or credentials");
+            var secondSettings = Path.Combine(Path.GetDirectoryName(settings)!, "instances", "2", "connections.json");
+            Check(new ConnectionStore(secondSettings).Load().Port == secondPort.ToString(), "second instance port was not saved");
+            var source = Path.Combine(Root, "multi-source.txt");
+            await File.WriteAllTextAsync(source, "simultaneous receivers");
+            await Task.WhenAll(TransferSender.SendAsync([new(source, "same-name.txt", new FileInfo(source).Length)], firstCode, null, default),
+                TransferSender.SendAsync([new(source, "same-name.txt", new FileInfo(source).Length)], secondCode, null, default));
+            foreach (var directory in new[] { firstDestination, secondDestination })
+                Check(await File.ReadAllTextAsync(Path.Combine(directory, "same-name.txt")) == "simultaneous receivers",
+                    "simultaneous receiver transfer differed");
+
+            Click(second, "StopReceiveButton");
+            await Until(() => Control<Button>(second, "ReceiveButton").IsEnabled, "second instance stop");
+            Click(second, "RecreateCodeButton");
+            await Until(() => Control<Button>(second, "RecreateCodeButton").IsEnabled, "isolated instance code recreation");
+            secondCode = Control<TextBox>(second, "ReceiveCode").Text!;
+            Check(Control<TextBox>(first, "ReceiveCode").Text == firstCode
+                && new ConnectionStore(settings).GetIdentity().Token == Invitation.Parse(firstCode).Token,
+                "second instance rotation changed the first instance");
+            await TransferSender.SendAsync([new(source, "after-rotation.txt", new FileInfo(source).Length)], firstCode, null, default);
+            second.Close();
+            second = new MainWindow(settings);
+            second.Show();
+            Check(Control<TextBox>(second, "ReceiveCode").Text == secondCode
+                && Control<TextBox>(second, "ReceivePort").Text == secondPort.ToString(),
+                "reopening second instance lost saved code or available port");
+            Click(second, "ReceiveButton");
+            await Until(() => Control<Button>(second, "StopReceiveButton").IsEnabled, "reopened second instance startup");
+            Check(Control<TextBox>(second, "ReceiveCode").Text == secondCode, "free saved port or code was changed");
+            foreach (var window in new[] { first, second }) Click(window, "StopReceiveButton");
+            await Until(() => Control<Button>(first, "ReceiveButton").IsEnabled && Control<Button>(second, "ReceiveButton").IsEnabled,
+                "multiple receiver shutdown");
+        }
+        finally { first.Close(); second.Close(); }
+        Console.WriteLine("PASS UI multi-instance receive / external and instance port conflicts / simultaneous HTTPS transfers / isolated rotation / saved port and code reuse");
     }
 
     private static async Task Until(Func<bool> condition, string action)

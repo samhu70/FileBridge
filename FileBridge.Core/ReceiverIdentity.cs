@@ -1,4 +1,5 @@
 using System.Net;
+using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
@@ -17,7 +18,31 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
         get { using var certificate = LoadStoredCertificate(); return UsesPublicKeyPin(certificate); }
     }
 
-    private static bool UsesPublicKeyPin(X509Certificate2 certificate) => certificate.Extensions[PublicKeyPinOid] is not null;
+    private static bool UsesPublicKeyPin(X509Certificate2 certificate)
+    {
+        // Crypt32 cannot expose the UUID-sized OID through certificate.Extensions on Windows.
+        try
+        {
+            var tbs = new AsnReader(certificate.RawDataMemory, AsnEncodingRules.DER).ReadSequence().ReadSequence();
+            var extensionTag = new Asn1Tag(TagClass.ContextSpecific, 3);
+            while (tbs.HasData)
+            {
+                if (tbs.PeekTag().HasSameClassAndValue(extensionTag))
+                {
+                    var extensions = tbs.ReadSequence(extensionTag).ReadSequence();
+                    while (extensions.HasData)
+                        if (extensions.ReadSequence().ReadObjectIdentifier() == PublicKeyPinOid) return true;
+                    return false;
+                }
+                tbs.ReadEncodedValue();
+            }
+            return false;
+        }
+        catch (AsnContentException error)
+        {
+            throw new CryptographicException("保存的接收凭据无效，请手动重新创建连接码。", error);
+        }
+    }
 
     public static ReceiverIdentity Create() => Create(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(365));
 
@@ -33,7 +58,7 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
         var request = new CertificateRequest("CN=FileBridge", key, HashAlgorithmName.SHA256);
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
         request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.1") }, false));
-        if (publicKeyPin) request.CertificateExtensions.Add(new X509Extension(PublicKeyPinOid, [0x05, 0x00], critical: false));
+        if (publicKeyPin) request.CertificateExtensions.Add(new X509Extension(new Oid(PublicKeyPinOid, null), [0x05, 0x00], critical: false));
         return request.CreateSelfSigned(notBefore, notAfter);
     }
 
@@ -70,10 +95,10 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
             certificate.Dispose();
             throw new InvalidDataException("旧版连接码的证书已过期，请手动重新创建长期连接码。");
         }
-        if (valid && now.AddDays(1).UtcDateTime < certificate.NotAfter.ToUniversalTime()) return certificate;
+        // Keep the mode marker in the saved PFX; omit it from TLS so Windows can read every extension.
         using (certificate)
         using (var key = certificate.GetECDsaPrivateKey() ?? throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。"))
-        using (var renewed = CreateCertificate(key, now.AddMinutes(-1), now.AddDays(365), publicKeyPin: true))
+        using (var renewed = CreateCertificate(key, now.AddMinutes(-1), now.AddDays(365), publicKeyPin: false))
         {
             // Reimport so Schannel receives an ordinary user key rather than a transient signer handle.
             var pfx = renewed.Export(X509ContentType.Pfx);

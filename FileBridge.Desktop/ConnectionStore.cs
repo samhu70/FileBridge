@@ -13,6 +13,19 @@ internal sealed class ConnectionStore(string path)
     public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FileBridge", "connections.json");
 
+    public static ConnectionStore OpenAvailable(string path, out FileStream lease, out int instanceNumber)
+    {
+        for (instanceNumber = 1; ; instanceNumber++)
+        {
+            var instancePath = instanceNumber == 1 ? path : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!,
+                "instances", instanceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture), Path.GetFileName(path));
+            var store = new ConnectionStore(instancePath);
+            try { lease = store.AcquireReceiverLease(); return store; }
+            // Skip sharing/would-block errors; filesystem failures must still be reported.
+            catch (IOException error) when (error.InnerException is IOException cause && (cause.HResult & 0xffff) is 11 or 32 or 35) { }
+        }
+    }
+
     public ConnectionPreferences Load()
     {
         try
