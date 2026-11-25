@@ -450,6 +450,9 @@
   <data name="SupportFileBridgeHint" xml:space="preserve">
     <value>自愿打赏，通过浏览器打开 Stripe。</value>
   </data>
+  <data name="PayPalSupportHint" xml:space="preserve">
+    <value>自愿打赏，通过浏览器打开 PayPal。</value>
+  </data>
   <data name="ReverseSend" xml:space="preserve">
     <value>反向发送</value>
   </data>

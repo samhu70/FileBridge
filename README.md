@@ -11,19 +11,19 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.7 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.7/FileBridge-windows-x64-2.5.7-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.7 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.7/FileBridge-macOS-arm64-2.5.7-framework-dependent.zip) |
-| SHA-256 | 2.5.7 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.7/SHA256SUMS-2.5.7.txt) |
+| Windows x64 | 2.5.8 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.8/FileBridge-windows-x64-2.5.8-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.8 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.8/FileBridge-macOS-arm64-2.5.8-framework-dependent.zip) |
+| SHA-256 | 2.5.8 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.8/SHA256SUMS-2.5.8.txt) |
 
-**2.5.7 修复慢速发送时剩余时间反复消失的问题**：发送端不再套用接收端的五秒清空规则；进度更新间隙显示「最近速度」和「按最近速度估算」的剩余时间，超过五分钟无更新才失效，暂停立即停止估算。保留自动重连续传、最多 10 路和 SHA-256 校验。发布包由 `v2.5.7` 标签对应源码构建。
+**2.5.8 新增 PayPal 支持入口**：软件底部和本页均可选择 Stripe 或 PayPal 自愿打赏，提示支持中英文。保留慢速发送剩余时间估算、自动重连续传、最多 10 路和 SHA-256 校验。发布包由 `v2.5.8` 标签对应源码构建。
 
-**2.5.7 keeps sender ETA visible between sparse updates on slow links:** after five seconds, the sender labels recent speed and estimated time based on it, retaining the sample up to the five-minute idle deadline. Pausing clears the estimate immediately. Receiver live-speed expiry, automatic reverse resume, ten streams and SHA-256 are preserved. Downloads are built from `v2.5.7`.
+**2.5.8 adds PayPal support:** choose Stripe or PayPal in the app footer or this README to leave an optional tip, with Chinese and English hints. Slow-link sender ETA, automatic reverse resume, ten streams and SHA-256 are preserved. Downloads are built from `v2.5.8`.
 
 ## 中文
 
 ### 支持开发
 
-如果 FileBridge 对你有帮助，欢迎[通过 Stripe 自愿打赏](https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00)，支持持续开发与维护。一次性打赏，以澳元计价，建议 A$5，金额可自行修改。软件窗口底部也提供「支持 FileBridge」入口。
+如果 FileBridge 对你有帮助，欢迎通过 [Stripe](https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00) 或 [PayPal](https://paypal.me/samhu70) 自愿打赏，支持持续开发与维护。金额可自行选择；Stripe 为一次性澳元打赏，建议 A$5，金额可修改。软件窗口底部的「支持 FileBridge」旁也提供 Stripe 和 PayPal 两个入口。
 
 ### 软件功能
 
@@ -109,7 +109,7 @@ dotnet run --project FileBridge.Desktop -c Release
 
 ### Support development
 
-If FileBridge is useful to you, you can [leave an optional tip through Stripe](https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00) to support ongoing development and maintenance. Tips are one-time payments in AUD, with a suggested A$5 that you can change. You can also select **Support FileBridge** at the bottom of the app window.
+If FileBridge is useful to you, you can leave an optional tip through [Stripe](https://buy.stripe.com/7sYeVcawk5hIb6JfSP1oI00) or [PayPal](https://paypal.me/samhu70) to support ongoing development and maintenance. Choose your own amount; Stripe tips are one-time payments in AUD, with an editable A$5 suggestion. Both links are also available beside **Support FileBridge** at the bottom of the app window.
 
 ### Features
 

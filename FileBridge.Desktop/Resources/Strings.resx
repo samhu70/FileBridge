@@ -450,6 +450,9 @@
   <data name="SupportFileBridgeHint" xml:space="preserve">
     <value>Optional tip — opens Stripe in your browser.</value>
   </data>
+  <data name="PayPalSupportHint" xml:space="preserve">
+    <value>Optional tip — opens PayPal in your browser.</value>
+  </data>
   <data name="ReverseSend" xml:space="preserve">
     <value>Reverse send</value>
   </data>
