@@ -7,8 +7,9 @@ namespace FileBridge.Core;
 
 /// <summary>A selected local file and its safe path relative to the transfer root.</summary>
 public sealed record TransferFile(string LocalPath, string RelativeName, long Size);
-/// <summary>Authenticated peer endpoint with a certificate pin (fb2) or stable public-key pin (fb3).</summary>
-public sealed record Invitation(string Url, string Token, string Pin, [property: JsonIgnore] bool PublicKeyPin = false)
+/// <summary>Authenticated peer endpoint and optional public fallback sharing a certificate pin (fb2) or public-key pin (fb3).</summary>
+public sealed record Invitation(string Url, string Token, string Pin, [property: JsonIgnore] bool PublicKeyPin = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PublicUrl = null)
 {
     public string Encode() => (PublicKeyPin ? "fb3_" : "fb2_") + Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(this)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     public static Invitation Parse(string code)
@@ -21,8 +22,7 @@ public sealed record Invitation(string Url, string Token, string Pin, [property:
             var data = code[4..].Replace('-', '+').Replace('_', '/');
             data = data.PadRight((data.Length + 3) / 4 * 4, '=');
             var value = JsonSerializer.Deserialize<Invitation>(Convert.FromBase64String(data));
-            if (value is null || !Uri.TryCreate(value.Url, UriKind.Absolute, out var uri) || uri.Scheme != "https"
-                || uri.AbsolutePath != "/" || uri.Query != "" || uri.Fragment != "" || uri.UserInfo != ""
+            if (value is null || !ValidEndpoint(value.Url) || value.PublicUrl is not null && !ValidEndpoint(value.PublicUrl)
                 || !Wire.ValidHash(value.Pin) || !Wire.ValidHash(value.Token))
                 throw new InvalidDataException("连接码中的地址或认证信息无效。");
             return value with { PublicKeyPin = code.StartsWith("fb3_", StringComparison.Ordinal) };
@@ -30,6 +30,10 @@ public sealed record Invitation(string Url, string Token, string Pin, [property:
         catch (Exception error) when (error is FormatException or JsonException)
         { throw new InvalidDataException("连接码不完整，请重新复制整行。", error); }
     }
+
+    internal static bool ValidEndpoint(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && uri.Scheme == "https" && uri.Port is > 0 and <= 65535 && uri.AbsolutePath == "/"
+        && uri.Query == "" && uri.Fragment == "" && uri.UserInfo == "";
 }
 
 /// <summary>File identity, size, and whole-file SHA-256 advertised by the sender.</summary>

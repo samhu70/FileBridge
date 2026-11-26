@@ -332,35 +332,48 @@ public sealed partial class MainWindow : Window
             var oldIdentity = storedIdentity;
             storedIdentity = await Task.Run(() => connections.GetIdentity());
             var identity = storedIdentity;
+            var publicEnabled = PublicReceiveEnabled.IsChecked == true;
+            funnelSetupUri = null;
             var progress = new Progress<TransferProgress>(UpdateReceiveProgress);
-            try { receiver = await Task.Run(() => TransferReceiver.StartAsync(address, port, directory, progress, identity: identity)); }
+            try { receiver = await Task.Run(() => TransferReceiver.StartAsync(address, port, directory, progress, identity: identity, loopback: publicEnabled)); }
             catch (IOException error) when (error.InnerException is AddressInUseException)
             {
-                receiver = await Task.Run(() => TransferReceiver.StartAsync(address, 0, directory, progress, identity: identity));
+                receiver = await Task.Run(() => TransferReceiver.StartAsync(address, 0, directory, progress, identity: identity, loopback: publicEnabled));
             }
             var actualPort = new Uri(receiver.Invitation.Url).Port;
-            if (actualPort != port)
+            ReceivePort.Text = actualPort.ToString(CultureInfo.InvariantCulture);
+            if (publicEnabled)
             {
-                ReceivePort.Text = actualPort.ToString(CultureInfo.InvariantCulture);
-                if (!SaveConnectionPreferences())
-                {
-                    await receiver.DisposeAsync();
-                    receiver = null;
-                    RefreshInvitationPreview();
-                    return;
-                }
+                Message("StartingPublicReceive");
+                funnel = await TailscaleFunnel.StartAsync(receiver.LoopbackPort, storedPublicUrl);
+                storedPublicUrl = funnel.Url;
             }
-            ReceiveCode.Text = receiver.Invitation.Encode();
+            if (!SaveConnectionPreferences())
+            {
+                await StopLocalReceiverAsync();
+                receiver = null;
+                RefreshInvitationPreview();
+                return;
+            }
+            ReceiveCode.Text = (receiver.Invitation with { PublicUrl = storedPublicUrl }).Encode();
             receiveState = "ReceiverStarted";
             receiveStatus = "WaitingForSender";
             receiveProgress = null;
             RenderReceive();
             CopyButton.IsEnabled = true;
             receiveTimer.Start();
-            Message(actualPort != port ? "ReceivePortChanged"
+            Message(publicEnabled ? "ShareDualInvitation" : actualPort != port ? "ReceivePortChanged"
                 : oldIdentity is not null && oldIdentity.Token != identity.Token ? "InvitationUpdated" : "ShareInvitation");
         }
-        catch (Exception error) { ShowError(error, "ReceiveStartFailed"); }
+        catch (Exception error)
+        {
+            try { await StopLocalReceiverAsync(); }
+            catch (Exception cleanupError) { error = new AggregateException(error.Message + " " + cleanupError.Message, error, cleanupError); }
+            finally { receiver = null; }
+            funnelSetupUri = (error as FunnelSetupException)?.SetupUri;
+            RefreshInvitationPreview();
+            ShowError(error, "ReceiveStartFailed");
+        }
         finally
         {
             receiverChanging = false;
@@ -375,7 +388,7 @@ public sealed partial class MainWindow : Window
         SetReceiverControls();
         try
         {
-            if (receiver is not null) await receiver.DisposeAsync();
+            await StopLocalReceiverAsync();
             Message("ReceiveStopped");
         }
         catch (Exception error) { ShowError(error); }

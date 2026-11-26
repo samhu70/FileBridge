@@ -555,4 +555,46 @@
   <data name="SendRecentSpeed" xml:space="preserve">
     <value>Recent speed: {0}</value>
   </data>
+  <data name="PublicReceiveEnabled" xml:space="preserve">
+    <value>Enable public fallback (peer does not need Tailscale)</value>
+  </data>
+  <data name="PublicReceiveHint" xml:space="preserve">
+    <value>The code tries a direct connection first, then the public entry. Only FileBridge is forwarded; code holders can upload files. This computer needs Tailscale. Funnel bandwidth limits apply; public DNS may take several minutes on first use.</value>
+  </data>
+  <data name="FunnelSetup" xml:space="preserve">
+    <value>Authorize Tailscale public entry</value>
+  </data>
+  <data name="PublicEndpoint" xml:space="preserve">
+    <value>Public fallback: {0} (available only while public receiving is enabled)</value>
+  </data>
+  <data name="StartingPublicReceive" xml:space="preserve">
+    <value>Starting public fallback…</value>
+  </data>
+  <data name="ShareDualInvitation" xml:space="preserve">
+    <value>Receiving is enabled. The code supports private and public access. Share only with the intended sender; stopping receiving closes this window's public entry.</value>
+  </data>
+  <data name="Core.EndpointTimedOut" xml:space="preserve">
+    <value>Connection endpoint timed out.</value>
+  </data>
+  <data name="Core.TailscaleSignIn" xml:space="preserve">
+    <value>Sign in and connect to Tailscale before enabling public fallback.</value>
+  </data>
+  <data name="Core.TailscaleDomainMissing" xml:space="preserve">
+    <value>Tailscale has no usable domain. Enable MagicDNS first.</value>
+  </data>
+  <data name="Core.TailscaleStartFailed" xml:space="preserve">
+    <value>Could not start Tailscale.</value>
+  </data>
+  <data name="Core.FunnelStartFailed" xml:space="preserve">
+    <value>Public entry did not start. Check Tailscale Funnel authorization, network and available ports.</value>
+  </data>
+  <data name="Core.FunnelPortsBusy" xml:space="preserve">
+    <value>All public entry ports are in use. Stop public receiving that is no longer needed.</value>
+  </data>
+  <data name="Core.TailscaleMissing" xml:space="preserve">
+    <value>Tailscale was not found. Install it and sign in on the receiving computer.</value>
+  </data>
+  <data name="Core.TailscaleCommandFailed" xml:space="preserve">
+    <value>The Tailscale command failed. Check that the app is running and signed in.</value>
+  </data>
 </root>

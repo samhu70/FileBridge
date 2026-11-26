@@ -15,6 +15,9 @@ public sealed partial class MainWindow
     private readonly FileStream instanceLease;
     private bool receiverChanging;
     private bool invitationPreviewPending;
+    private TailscaleFunnel? funnel;
+    private string? storedPublicUrl;
+    private Uri? funnelSetupUri;
 
     private void InitializeConnections()
     {
@@ -27,6 +30,8 @@ public sealed partial class MainWindow
             ReceivePort.Text = saved.Port ?? "8787";
             if (!string.IsNullOrEmpty(saved.Directory)) ReceiveDirectory.Text = saved.Directory;
             storedIdentity = saved.Identity;
+            storedPublicUrl = saved.PublicUrl;
+            PublicReceiveEnabled.IsChecked = saved.PublicEnabled;
             RefreshInvitationPreview();
             if ((ReceiveCode.Text?.Length > 0 || SendCode.Text.Length > 0) && storedIdentity?.IsUsable != false) Message("ConnectionsRestored");
         }
@@ -58,6 +63,12 @@ public sealed partial class MainWindow
                 saveConnectionsTimer.Start();
             };
         Closing += (_, _) => { saveConnectionsTimer.Stop(); SaveConnectionPreferences(); };
+        PublicReceiveEnabled.IsCheckedChanged += (_, _) =>
+        {
+            funnelSetupUri = null;
+            SetReceiverControls();
+            SaveConnectionPreferences();
+        };
     }
 
     private bool SaveConnectionPreferences()
@@ -66,7 +77,8 @@ public sealed partial class MainWindow
         try
         {
             connections.SavePreferences(new(SendCode.Text ?? "", ReceiveAddress.Text?.Trim() ?? "",
-                ReceivePort.Text ?? "", ReceiveDirectory.Text?.Trim() ?? "", ReverseCode: ReverseReceiveCode.Text ?? ""));
+                ReceivePort.Text ?? "", ReceiveDirectory.Text?.Trim() ?? "", ReverseCode: ReverseReceiveCode.Text ?? "",
+                PublicEnabled: PublicReceiveEnabled.IsChecked == true, PublicUrl: storedPublicUrl));
             return true;
         }
         catch (Exception error) { ShowError(error, "ConnectionSaveFailed"); return false; }
@@ -81,7 +93,7 @@ public sealed partial class MainWindow
         try
         {
             if (!int.TryParse(ReceivePort.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var port)) return;
-            ReceiveCode.Text = storedIdentity.InvitationFor(ReceiveAddress.Text?.Trim() ?? "", port).Encode();
+            ReceiveCode.Text = (storedIdentity.InvitationFor(ReceiveAddress.Text?.Trim() ?? "", port) with { PublicUrl = storedPublicUrl }).Encode();
             CopyButton.IsEnabled = true;
         }
         catch (ArgumentException) { }
@@ -105,6 +117,13 @@ public sealed partial class MainWindow
         LocalReceiveEndpoint.IsVisible = !reverse;
         ReverseReceiveEndpoint.IsVisible = reverse;
         LocalInvitationPanel.IsVisible = !reverse;
+        PublicReceiveEnabled.IsVisible = !reverse;
+        PublicReceiveEnabled.IsEnabled = !active && !pulling && !receiverChanging;
+        PublicReceiveHint.IsVisible = !reverse && PublicReceiveEnabled.IsChecked == true;
+        FunnelSetupButton.IsVisible = !reverse && PublicReceiveEnabled.IsChecked == true && funnelSetupUri is not null;
+        FunnelSetupButton.NavigateUri = funnelSetupUri;
+        PublicEndpoint.IsVisible = storedPublicUrl is not null;
+        PublicEndpoint.Text = storedPublicUrl is null ? "" : language.Text("PublicEndpoint", storedPublicUrl);
     }
 
     private (string Address, int Port) ReadReceiveEndpoint()
@@ -150,8 +169,18 @@ public sealed partial class MainWindow
         {
             while (receiverChanging) await Task.Delay(20);
             if (reverseDownload is not null) { try { await reverseDownload; } catch { } }
-            if (receiver is not null) await receiver.DisposeAsync();
+            await StopLocalReceiverAsync();
         }
         finally { instanceLease.Dispose(); }
+    }
+
+    private async Task StopLocalReceiverAsync()
+    {
+        try { if (funnel is not null) await funnel.DisposeAsync(); }
+        finally
+        {
+            funnel = null;
+            if (receiver is not null) await receiver.DisposeAsync();
+        }
     }
 }

@@ -555,4 +555,46 @@
   <data name="SendRecentSpeed" xml:space="preserve">
     <value>最近速度：{0}</value>
   </data>
+  <data name="PublicReceiveEnabled" xml:space="preserve">
+    <value>启用公网备用入口（对方无需 Tailscale）</value>
+  </data>
+  <data name="PublicReceiveHint" xml:space="preserve">
+    <value>连接码优先直连，失败后尝试公网。公网入口仅转发 FileBridge；持码者可传入文件。需要本机登录 Tailscale，Funnel 可能限速；首次启用后 DNS 生效可能需要几分钟。</value>
+  </data>
+  <data name="FunnelSetup" xml:space="preserve">
+    <value>授权 Tailscale 公网入口</value>
+  </data>
+  <data name="PublicEndpoint" xml:space="preserve">
+    <value>公网备用地址：{0}（仅在启用公网接收时可用）</value>
+  </data>
+  <data name="StartingPublicReceive" xml:space="preserve">
+    <value>正在启动公网备用入口…</value>
+  </data>
+  <data name="ShareDualInvitation" xml:space="preserve">
+    <value>接收已启动，当前连接码可用于私网和公网。只分享给预期发送方；停止接收会关闭本窗口的公网入口。</value>
+  </data>
+  <data name="Core.EndpointTimedOut" xml:space="preserve">
+    <value>连接端点超时。</value>
+  </data>
+  <data name="Core.TailscaleSignIn" xml:space="preserve">
+    <value>请先登录并连接 Tailscale，再启用公网备用入口。</value>
+  </data>
+  <data name="Core.TailscaleDomainMissing" xml:space="preserve">
+    <value>Tailscale 未提供可用域名，请先启用 MagicDNS。</value>
+  </data>
+  <data name="Core.TailscaleStartFailed" xml:space="preserve">
+    <value>无法启动 Tailscale。</value>
+  </data>
+  <data name="Core.FunnelStartFailed" xml:space="preserve">
+    <value>公网入口未能启动，请检查 Tailscale Funnel 授权、网络和可用端口。</value>
+  </data>
+  <data name="Core.FunnelPortsBusy" xml:space="preserve">
+    <value>公网入口端口均已被使用，请先停止不再需要的公网接收。</value>
+  </data>
+  <data name="Core.TailscaleMissing" xml:space="preserve">
+    <value>未找到 Tailscale，请在接收电脑安装并登录 Tailscale。</value>
+  </data>
+  <data name="Core.TailscaleCommandFailed" xml:space="preserve">
+    <value>Tailscale 命令未成功，请检查应用是否正在运行并已登录。</value>
+  </data>
 </root>

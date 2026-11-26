@@ -13,10 +13,14 @@ var root = Path.Combine(parent, "filebridge-tests-" + Guid.NewGuid().ToString("N
 Directory.CreateDirectory(root);
 try
 {
+    if (args.Contains("--funnel-crash-owner")) { await FunnelChecks.CrashOwnerAsync(root); return; }
+    if (args.Contains("--funnel")) { await FunnelChecks.RunAsync(root); return; }
     if (args.Contains("--ui") || args.Contains("--ui-receive")) { UiChecks.Run(root, args.Contains("--ui-receive")); return; }
     if (args.Contains("--reverse")) { await ReverseChecks.RunAsync(root); return; }
     if (args.Contains("--lifetime")) { await LifetimeChecks.RunAsync(root); return; }
+    if (args.Contains("--dual")) { await DualEndpointChecks.RunAsync(root); return; }
     ProtocolChecks.Run();
+    await DualEndpointChecks.RunAsync(root);
     await ConnectionChecks.RunAsync(root);
     await LifetimeChecks.RunAsync(root);
     await AdaptiveStreamChecks.RunAsync(root);

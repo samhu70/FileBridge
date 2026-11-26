@@ -95,6 +95,9 @@
                   <StackPanel Spacing="7"><TextBlock Text="{DynamicResource Text.ReceiveAddressLabel}" Classes="label" /><TextBox x:Name="ReceiveAddress" PlaceholderText="{DynamicResource Text.ReceiveAddressHint}" AutomationProperties.Name="{DynamicResource Text.ReceiveAddressAccessible}" /></StackPanel>
                   <StackPanel Grid.Column="1" Spacing="7"><TextBlock Text="{DynamicResource Text.Port}" Classes="label" /><TextBox x:Name="ReceivePort" Text="8787" AutomationProperties.Name="{DynamicResource Text.ReceivePortAccessible}" /></StackPanel>
                 </Grid>
+                <CheckBox x:Name="PublicReceiveEnabled" Content="{DynamicResource Text.PublicReceiveEnabled}" />
+                <TextBlock x:Name="PublicReceiveHint" Text="{DynamicResource Text.PublicReceiveHint}" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+                <HyperlinkButton x:Name="FunnelSetupButton" Content="{DynamicResource Text.FunnelSetup}" IsVisible="False" HorizontalAlignment="Left" />
                 <StackPanel x:Name="ReverseReceiveEndpoint" Spacing="7" IsVisible="False">
                   <TextBlock Text="{DynamicResource Text.ReversePeerCode}" Classes="label" />
                   <TextBox x:Name="ReverseReceiveCode" AcceptsReturn="True" TextWrapping="Wrap" Height="78" MaxLength="4096" PlaceholderText="{DynamicResource Text.ReverseCodeHint}" AutomationProperties.Name="{DynamicResource Text.ReversePeerCode}" />
@@ -122,6 +125,7 @@
                 </Grid>
                 <TextBox x:Name="ReceiveCode" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="90" PlaceholderText="{DynamicResource Text.InvitationHint}" AutomationProperties.Name="{DynamicResource Text.InvitationAccessible}" />
                 <TextBlock Text="{DynamicResource Text.PersistentCodeHint}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock x:Name="PublicEndpoint" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
               </StackPanel>
               <StackPanel Grid.Row="4" Spacing="8">
                 <TextBlock x:Name="ReceiveStatus" Text="{DynamicResource Text.WaitingToReceive}" TextTrimming="CharacterEllipsis" />

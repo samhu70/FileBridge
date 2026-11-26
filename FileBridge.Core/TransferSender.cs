@@ -70,7 +70,7 @@ public static class TransferSender
     {
         if (parallelChunks is < 1 or > Wire.MaxParallelChunks) throw new ArgumentOutOfRangeException(nameof(parallelChunks));
         var invite = Invitation.Parse(code);
-        using var client = CreateClient(invite);
+        using var connection = new PeerConnection(invite);
         foreach (var source in files)
         {
             ct.ThrowIfCancellationRequested();
@@ -84,9 +84,15 @@ public static class TransferSender
             {
                 var current = new FileInfo(source.LocalPath);
                 if (current.Length != size || current.LastWriteTimeUtc != modified) throw new IOException("源文件发生变化，请停止编辑后重新发送。");
-                try { await UploadAsync(client, source.LocalPath, m, progress, ct, StreamsForSize(size, parallelChunks)); break; }
+                try
+                {
+                    var client = await connection.GetAsync(ct);
+                    await UploadAsync(client, source.LocalPath, m, progress, ct, StreamsForSize(size, parallelChunks));
+                    break;
+                }
                 catch (Exception error) when (attempt < MaxAttempts - 1 && Retryable(error, ct))
                 {
+                    connection.Reset();
                     progress?.Report(new(m.Name, TransferStage.Retrying, 0, m.Size, ParallelChunks: 0,
                         RetryAttempt: attempt + 1, RetryLimit: MaxAttempts));
                     await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct);

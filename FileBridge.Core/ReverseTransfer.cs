@@ -16,9 +16,9 @@ public static class ReverseTransfer
         CancellationToken ct, int parallelChunks = Wire.MaxParallelChunks)
     {
         if (parallelChunks is < 1 or > Wire.MaxParallelChunks) throw new ArgumentOutOfRangeException(nameof(parallelChunks));
-        using var client = TransferSender.CreateClient(Invitation.Parse(code));
+        using var connection = new PeerConnection(Invitation.Parse(code));
         var reporting = new ReceivingProgress(progress);
-        var offer = await ReadReadyOfferAsync(client, reporting, null, ct);
+        var offer = await ReadReadyOfferAsync(connection, reporting, null, ct);
         await using var local = TransferReceiver.CreateLocal(directory, reporting);
         foreach (var manifest in offer.Files)
         {
@@ -28,17 +28,18 @@ public static class ReverseTransfer
                 {
                     if (attempt > 0)
                     {
-                        offer = await ReadReadyOfferAsync(client, reporting, manifest, ct);
+                        offer = await ReadReadyOfferAsync(connection, reporting, manifest, ct);
                         if (!offer.Files.Any(f => f.Id == manifest.Id))
                             throw new InvalidDataException("反向发送任务已变化，请重新连接。");
                     }
                     var streams = TransferSender.StreamsForSize(manifest.Size,
                         TransferSender.NegotiatedStreams(parallelChunks, offer.ParallelChunks));
-                    await DownloadAsync(client, offer.Id, manifest, local, streams, offer.ChunkSize, reporting, ct);
+                    await DownloadAsync(connection, offer.Id, manifest, local, streams, offer.ChunkSize, reporting, ct);
                     break;
                 }
                 catch (Exception error) when (CanReconnect(error, ct))
                 {
+                    if (!OfferUnavailable(error)) connection.Reset();
                     reporting.Wait(manifest, OfferUnavailable(error));
                     await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << attempt, 15)), ct);
                 }
@@ -66,14 +67,15 @@ public static class ReverseTransfer
     private static bool CanReconnect(Exception error, CancellationToken ct) => !ct.IsCancellationRequested
         && (OfferUnavailable(error) || TransferSender.Retryable(error, ct) || error is OperationCanceledException or HttpIOException);
 
-    private static async Task<ReverseOffer> ReadReadyOfferAsync(HttpClient client, ReceivingProgress progress,
+    private static async Task<ReverseOffer> ReadReadyOfferAsync(PeerConnection connection, ReceivingProgress progress,
         FileManifest? manifest, CancellationToken ct)
     {
         for (var attempt = 0; ; attempt = Math.Min(attempt + 1, 4))
         {
-            try { return await ReadOfferAsync(client, ct); }
+            try { return await ReadOfferAsync(await connection.GetAsync(ct), ct); }
             catch (Exception error) when (CanReconnect(error, ct))
             {
+                if (!OfferUnavailable(error)) connection.Reset();
                 progress.Wait(manifest, OfferUnavailable(error));
                 await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << attempt, 15)), ct);
             }
@@ -94,9 +96,10 @@ public static class ReverseTransfer
         return offer;
     }
 
-    private static async Task DownloadAsync(HttpClient client, string offer, FileManifest manifest, TransferReceiver local,
+    private static async Task DownloadAsync(PeerConnection connection, string offer, FileManifest manifest, TransferReceiver local,
         int streams, int chunkSize, IProgress<TransferProgress>? progress, CancellationToken ct)
     {
+        var client = await connection.GetAsync(ct);
         var state = await local.BeginLocalAsync(manifest, streams, false, ct);
         var query = $"?offer={offer}&id={manifest.Id}&parallelChunks={streams}";
         if (!state.Done)
@@ -172,12 +175,12 @@ public static class ReverseTransfer
         {
             try
             {
-                var receipt = await PostJsonAsync<ResumeState>(client, "v3/reverse/complete" + query, ct);
+                var receipt = await PostJsonAsync<ResumeState>(await connection.GetAsync(ct), "v3/reverse/complete" + query, ct);
                 if (!receipt.Done || receipt.Offset != manifest.Size) throw new InvalidDataException("接收端确认进度不一致。");
                 break;
             }
             catch (Exception error) when (attempt < 9 && TransferSender.Retryable(error, ct))
-            { await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct); }
+            { connection.Reset(); await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct); }
         }
     }
 

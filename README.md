@@ -60,6 +60,18 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 
 接收端重启后，点击「开始接收」即可沿用原连接码；发送方重新选择原文件即可续传。不要删除保存目录下的 `.filebridge-parts`。
 
+### 同一个连接码：直连与公网备用
+
+接收方在「接收文件」勾选「启用公网备用入口（对方无需 Tailscale）」后，点击「开始接收」，再复制连接码。首次使用可能需要按界面链接授权 Tailscale Funnel，并等待几分钟让公网 DNS 生效。两端均使用支持此功能的新版 FileBridge。
+
+- 新码包含直连和公网两个地址，共用原有认证令牌和 TLS 公钥校验。客户端优先直连，约三秒内无法连接时尝试公网；传输中断后会重新选择通道并校验续传进度。
+- 接收电脑需要安装并登录 Tailscale；走公网的发送方无需 Tailscale，也无需接收设备共享邀请。无需自建 FileBridge 中转服务。
+- 公网入口只转发当前窗口的 FileBridge 服务，不授予远程桌面、SSH 或电脑其他服务的访问权限。已有 Tailscale 设备共享及访问规则仍独立生效，连接码不会收紧那些规则。
+- 公网默认关闭。停止接收、关闭窗口或程序退出会撤销本窗口的临时转发。持码者在接收开启期间可以上传文件，反向发送时也可下载明确选中的文件，因此不要公开连接码；泄露后停止接收并手动重建。
+- 已保存的双地址码在关闭公网后仍保留，可继续直连。首次添加公网地址，或地址、端口变化时，需要把更新后的码交给对方；以后同一地址可复用。
+- 自动避开已有的 Tailscale 服务，优先使用空闲的 `8443`、`10000` 或 `443`。全部占用时提示错误，不覆盖其他服务。Funnel 的带宽限制由 Tailscale 决定，大文件优先直连。
+- 旧的单地址码继续可用；旧版客户端只能使用新码中的直连地址。发送方没有 Tailscale 时，请双方升级以使用公网备用。
+
 ### 反向传输
 
 反向传输要求双方运行 2.5.3 或更新版本；建议双方升级至 2.5.7，以获得小分块、慢链路修复和最多 10 路的反向接收。只需提供文件的电脑可被对方访问，对方无需反向共享自己的电脑。
@@ -85,7 +97,7 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 ### 使用边界
 
 - 自动优先选择 Tailscale 地址，其次为局域网私有 IPv4；只有 `127.0.0.1` 时仅能本机测试。
-- 软件不提供 NAT 穿透或公网中转，不配置 VPN、防火墙或 Tailscale 权限；选中的 IP 和端口必须能从对端访问。
+- 私有模式要求指定 IP 和端口可达；可选公网模式使用 Tailscale Funnel。软件不修改防火墙、设备共享或 Tailnet 访问规则。
 - 不传输空目录或符号链接；接收目录及其内部路径不能使用符号链接或目录联接。
 - 传输期间不要修改源文件或临时文件。多个文件按顺序发送，并行针对单个文件的分块，不保证在所有网络上提速。
 - 当前发布包没有 Apple Developer ID 公证或 Windows Authenticode 签名。
@@ -99,6 +111,8 @@ dotnet build FileBridge.sln -c Release
 dotnet run --project FileBridge.Tests -c Release
 dotnet run --project FileBridge.Desktop -c Release
 ```
+
+双地址与故障切换可单独运行 `dotnet run --project FileBridge.Tests -c Release -- --dual`；`--funnel` 需已登录 Tailscale，会临时开放隔离的测试服务，验证真实公网 TLS、认证和退出清理，结束后恢复原服务配置。普通测试不会启用公网。
 
 可选测试：`dotnet run --project FileBridge.Tests -c Release -- --ui` 需要图形会话，会自动打开并关闭测试窗口；`--large` 会创建并传输 2 GiB 文件，验证暂停恢复和 SHA-256。
 
@@ -144,6 +158,16 @@ On Windows, extract the ZIP and open `FileBridge.exe`. On Mac, extract the ZIP a
 
 After restarting the receiver, select **Start receiving** to reuse the saved code. Select the original source files again to resume. Keep the `.filebridge-parts` directory.
 
+### One code for direct and public access
+
+On the receiver, select **Enable public fallback (peer does not need Tailscale)**, start receiving, and copy the code. First use may require authorizing Tailscale Funnel through the link shown in the app; public DNS can take several minutes to propagate. Both peers need an updated FileBridge client for automatic public fallback.
+
+The code keeps the direct and public endpoints under the same token and TLS pin. Clients prefer direct access, try the public endpoint after a three-second connection timeout, and select again after an interruption while verifying the saved prefix. The receiving computer needs Tailscale; the public peer needs neither Tailscale nor a device-sharing invitation. No self-hosted FileBridge relay is required.
+
+Public access is off by default and forwards only this window's authenticated FileBridge service. It does not grant SSH, remote desktop or other service access. Existing Tailscale shares and policies remain independent and are not tightened by a FileBridge code. Code holders can upload while receiving is active and download explicitly offered reverse-send files; keep the code private and manually recreate it if leaked.
+
+Stopping reception or exiting the app removes its temporary forwarding session, including after an abrupt process exit. Existing services are preserved: available public ports are selected from `8443`, `10000`, and `443`; all occupied means an error. Funnel bandwidth limits apply, so prefer direct access for large files. A cached dual-endpoint code remains unchanged when public access is switched off. Share an updated code after first adding public access or when an endpoint changes. Old single-endpoint codes work as before; old clients only use the direct endpoint in a dual code.
+
 ### Reverse transfers
 
 Both peers must run 2.5.3 or newer; upgrade both to 2.5.7 for smaller blocks, slow-link fixes, and reverse receiving up to ten streams. Only the computer offering files needs to be reachable; the downloading peer does not need to share its own computer.
@@ -169,7 +193,7 @@ Pause and resume keep the verified contiguous prefix in `.filebridge-parts`. New
 ### Limits
 
 - Address discovery prefers Tailscale, then a private LAN IPv4 address. `127.0.0.1` works only on the same computer.
-- FileBridge does not provide NAT traversal or a public relay, and does not configure VPN access or firewalls. The selected IP and port must already be reachable.
+- Private mode requires a reachable IP and port; optional public access uses Tailscale Funnel. FileBridge does not change firewalls, device sharing or tailnet access policies.
 - Empty folders and symbolic links are not transferred. Receive paths must not contain symbolic links or directory junctions.
 - Do not modify source or partial files during a transfer. Files are sent sequentially; parallelism applies to chunks within a file and does not guarantee faster transfers on every network.
 - The current packages are not notarized with Apple Developer ID or signed with Windows Authenticode.

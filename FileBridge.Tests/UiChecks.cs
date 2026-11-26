@@ -37,9 +37,11 @@ internal static class UiChecks
 
     public static async Task CheckReceiveStartupAsync(MainWindow window)
     {
+        await CheckPublicPreferencesAsync();
         T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
         void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var settings = new ConnectionStore(Path.Combine(Root, "ui-connections", "connections.json"));
+        Check(Control<CheckBox>("PublicReceiveEnabled").IsChecked != true, "fresh install enabled public receiving");
         Check(settings.Load().Identity is null, "fresh receive check restored an unexpected identity");
         Control<TextBox>("ReceiveAddress").Text = "127.0.0.1";
         using (var listener = new TcpListener(IPAddress.Loopback, 0))
@@ -60,6 +62,7 @@ internal static class UiChecks
         await Until(() => Control<Button>("StopReceiveButton").IsEnabled || Control<Button>("ReceiveButton").IsEnabled,
             "receive startup completed");
         Check(Control<Button>("StopReceiveButton").IsEnabled, "receive startup failed: " + Control<TextBlock>("AppMessage").Text);
+        Check(!Control<CheckBox>("PublicReceiveEnabled").IsEnabled, "active receiver allowed public mode changes");
         code = Control<TextBox>("ReceiveCode").Text!;
         var source = Path.Combine(Root, "startup-source.txt");
         await File.WriteAllTextAsync(source, "native desktop receiver works");
@@ -74,6 +77,7 @@ internal static class UiChecks
     public static async Task CheckAsync(MainWindow window)
     {
         Check(SynchronizationContext.Current is AvaloniaSynchronizationContext, "UI context not installed");
+        await CheckPublicPreferencesAsync();
         await CheckMultiInstanceAsync();
         T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
         void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -371,6 +375,43 @@ internal static class UiChecks
         finally { reverseHost.Close(); reversePeer.Close(); }
         Console.WriteLine("PASS UI reverse send / outgoing-only receive / pause and resume / checksum / peer-code persistence / controls restored");
 
+    }
+
+    private static async Task CheckPublicPreferencesAsync()
+    {
+        var path = Path.Combine(Root, "public-ui", "connections.json");
+        var store = new ConnectionStore(path);
+        _ = store.GetIdentity();
+        const string url = "https://test.tailnet.ts.net:8443";
+        store.SavePreferences(new(Address: "127.0.0.1", PublicUrl: url));
+        var window = new MainWindow(path);
+        window.Show();
+        var code = window.FindControl<TextBox>("ReceiveCode")!.Text!;
+        try
+        {
+            Check(Invitation.Parse(code).PublicUrl == url, "cached public endpoint missing from restored code");
+            var checkbox = window.FindControl<CheckBox>("PublicReceiveEnabled")!;
+            Check(checkbox.IsChecked != true, "saved disabled public preference changed");
+            checkbox.IsChecked = true;
+            Check(window.FindControl<TextBlock>("PublicReceiveHint")!.IsVisible && store.Load().PublicEnabled,
+                "public choice did not show help or save");
+            window.FindControl<CheckBox>("ReverseReceiveMode")!.IsChecked = true;
+            Check(!checkbox.IsVisible && !window.FindControl<TextBlock>("PublicReceiveHint")!.IsVisible,
+                "outgoing-only receiving exposed public listener controls");
+        }
+        finally { window.Close(); }
+        window = new MainWindow(path);
+        window.Show();
+        try
+        {
+            Check(window.FindControl<CheckBox>("PublicReceiveEnabled")!.IsChecked == true
+                && !window.FindControl<Button>("StopReceiveButton")!.IsEnabled, "restoring public preference started receiving or lost choice");
+            window.FindControl<CheckBox>("PublicReceiveEnabled")!.IsChecked = false;
+            Check(window.FindControl<TextBox>("ReceiveCode")!.Text == code, "switching off public mode changed the unified code");
+        }
+        finally { window.Close(); }
+        await Task.Yield();
+        Console.WriteLine("PASS UI public opt-in / saved dual code / public-off code stability / outgoing-only visibility / restore stays stopped");
     }
 
     private static async Task CheckMultiInstanceAsync()

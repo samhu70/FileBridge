@@ -19,6 +19,17 @@ internal static class ProtocolChecks
         var permanent = invite with { PublicKeyPin = true };
         Check(permanent.Encode() == "fb3_" + code[4..] && Invitation.Parse(permanent.Encode()) == permanent,
             "fb3 public-key pin round trip failed");
+        var dual = permanent with { PublicUrl = "https://receiver.example.ts.net:8443" };
+        Check(Invitation.Parse(dual.Encode()) == dual, "dual invitation round trip failed");
+        var legacyView = JsonSerializer.Deserialize<LegacyInvitation>(JsonSerializer.Serialize(dual));
+        Check(legacyView is not null && legacyView.Url == invite.Url && legacyView.Token == invite.Token && legacyView.Pin == invite.Pin,
+            "dual invitation lost fields understood by old clients");
+        foreach (var invalid in new[] { "", "http://example.com", "https://user:secret@example.com", "https://example.com/file",
+            "https://example.com/?token=x", "https://example.com/#x", "https://example.com:0" })
+        {
+            try { Invitation.Parse((dual with { PublicUrl = invalid }).Encode()); throw new Exception("invalid public endpoint accepted"); }
+            catch (InvalidDataException) { }
+        }
         Check(JsonSerializer.Serialize(new ResumeState(123, "prefix", true, 4)) == """
 {"Offset":123,"Prefix":"prefix","Done":true,"ParallelChunks":4}
 """, "v2 resume fields changed");
@@ -33,6 +44,8 @@ internal static class ProtocolChecks
         Check(oldOffer?.ChunkSize == Wire.ChunkSize, "legacy reverse offer lost its four-MiB block size");
         Console.WriteLine("PASS fixed v2 protocol fixtures / fb2 invitation / partial-file identity / legacy resume defaults");
     }
+
+    private sealed record LegacyInvitation(string Url, string Token, string Pin);
 
     private static void Check(bool ok, string message)
     {

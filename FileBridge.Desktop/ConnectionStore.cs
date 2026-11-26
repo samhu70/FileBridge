@@ -6,7 +6,7 @@ using FileBridge.Core;
 namespace FileBridge.Desktop;
 
 internal sealed record ConnectionPreferences(string SendCode = "", string Address = "", string Port = "8787", string Directory = "",
-    ReceiverIdentity? Identity = null, string ReverseCode = "");
+    ReceiverIdentity? Identity = null, string ReverseCode = "", bool PublicEnabled = false, string? PublicUrl = null);
 
 internal sealed class ConnectionStore(string path)
 {

@@ -27,6 +27,8 @@ public sealed partial class TransferReceiver : IAsyncDisposable
     private WebApplication? app;
     private readonly string token;
     public Invitation Invitation { get; private set; } = null!;
+    /// <summary>Authenticated IPv4 loopback port for an optional public forwarder; zero when no loopback listener exists.</summary>
+    public int LoopbackPort { get; private set; }
 
     private sealed class ReceiveSession(FileManifest manifest, int parallelChunks, long offset)
     {
@@ -75,8 +77,9 @@ public sealed partial class TransferReceiver : IAsyncDisposable
     /// <param name="progress">Optional UI progress callback.</param>
     /// <param name="ct">Startup cancellation.</param>
     /// <param name="identity">Optional persisted local credentials; omitted callers keep fresh invitations.</param>
+    /// <param name="loopback">Also bind an authenticated loopback endpoint for a public TCP forwarder.</param>
     public static async Task<TransferReceiver> StartAsync(string address, int port, string directory,
-        IProgress<TransferProgress>? progress = null, CancellationToken ct = default, ReceiverIdentity? identity = null)
+        IProgress<TransferProgress>? progress = null, CancellationToken ct = default, ReceiverIdentity? identity = null, bool loopback = false)
     {
         if (!IPAddress.TryParse(address, out var ip) || ip.Equals(IPAddress.Any) || ip.Equals(IPAddress.IPv6Any)
             || port is < 0 or > 65535) throw new ArgumentException("请填写接收电脑的具体 IP 和有效端口。");
@@ -89,17 +92,21 @@ public sealed partial class TransferReceiver : IAsyncDisposable
             {
                 options.Limits.MaxRequestBodySize = Wire.ChunkSize + 16384;
                 options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(15);
-                options.Listen(ip, port, listen =>
+                void Listen(IPAddress bindAddress, int bindPort) => options.Listen(bindAddress, bindPort, listen =>
                 {
                     listen.Protocols = HttpProtocols.Http1;
                     listen.UseHttps(https => https.ServerCertificateSelector = (_, _) => receiver.certificates!.GetCertificate());
                 });
+                Listen(ip, port);
+                if (loopback && !ip.Equals(IPAddress.Loopback)) Listen(IPAddress.Loopback, 0);
             });
             var app = builder.Build();
             receiver.app = app;
             app.Run(receiver.HandleAsync);
             await app.StartAsync(ct);
-            receiver.Invitation = new Invitation(app.Urls.Single().TrimEnd('/'), receiver.token,
+            var direct = app.Urls.Single(url => IPAddress.Parse(new Uri(url).Host.Trim('[', ']')).Equals(ip));
+            receiver.LoopbackPort = app.Urls.Select(url => new Uri(url)).FirstOrDefault(url => url.Host == "127.0.0.1")?.Port ?? 0;
+            receiver.Invitation = new Invitation(direct.TrimEnd('/'), receiver.token,
                 Wire.CertificatePin(receiver.certificates!.GetCertificate(), receiver.publicKeyPin), receiver.publicKeyPin);
             return receiver;
         }
@@ -162,6 +169,7 @@ public sealed partial class TransferReceiver : IAsyncDisposable
                 {
                     result = context.Request.Path.Value switch
                     {
+                        "/v2/ping" => new ResumeState(0, ""),
                         "/v2/begin" => await BeginAsync(context, ct),
                         "/v2/finish" => await FinishAsync(context, ct),
                         _ => throw new TransferException(404, "接口不存在。")
