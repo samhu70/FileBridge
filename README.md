@@ -11,13 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.10 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.10/FileBridge-windows-x64-2.5.10-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.10 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.10/FileBridge-macOS-arm64-2.5.10-framework-dependent.zip) |
-| SHA-256 | 2.5.10 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.10/SHA256SUMS-2.5.10.txt) |
+| Windows x64 | 2.5.11 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/FileBridge-windows-x64-2.5.11-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.11 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/FileBridge-macOS-arm64-2.5.11-framework-dependent.zip) |
+| SHA-256 | 2.5.11 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/SHA256SUMS-2.5.11.txt) |
 
-**2.5.10 修复 Windows 首次建码和启动接收**：2.5.9 在 Windows 创建证书时仍可能出现 `oid.Value` 为空，导致连接码无法自动生成。新版本不再生成有兼容问题的大 OID，旧身份通过兼容路径保留原有公钥和连接码。已在实际 Windows 电脑验证自动建码、界面启动接收和真实 HTTPS 传输；继续支持多实例空闲端口选择、断点续传及同密钥证书续签。发布包在本机构建，由 `v2.5.10` 标签对应源码生成。
+**2.5.11：同一个连接码，优先直连、失败后走公网。** 接收方可选启用 Tailscale Funnel 公网备用入口，公网发送方无需 Tailscale；两条通道共用认证令牌与 TLS 公钥校验，支持断点续传。停止接收或退出会撤销本窗口的临时公网入口，保留已有服务。继续包含 Windows 首次建码修复、多实例空闲端口选择和长期连接码。Mac 与 Windows 原包均在本地构建和验证，未使用 GitHub Actions；源码对应 `v2.5.11`。
 
-**2.5.10 fixes first-time code creation and receiving on Windows:** 2.5.9 could still fail while creating a certificate with an empty `oid.Value`. New identities no longer use the incompatible large OID, while existing identities retain their public key and code through a compatibility path. Automatic code creation, desktop receiver startup and real HTTPS transfers have passed on a Windows computer. Multiple receivers, available-port selection, resume and same-key certificate renewal remain supported. Packages are built locally from `v2.5.10`.
+**2.5.11: one code, direct access first, public fallback when needed.** The receiver can enable an optional Tailscale Funnel entry; public senders do not need Tailscale. Both routes share the token and TLS public-key pin and support verified resume. Stopping reception or exiting removes this window's temporary entry while preserving other services. Windows first-time code creation fixes, available-port selection and long-lived codes remain included. Both archives were built and tested locally without GitHub Actions, from `v2.5.11`.
 
 ## 中文
 
