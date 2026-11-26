@@ -1,0 +1,28 @@
+name: Windows transfer regression
+
+on:
+  push:
+    branches: [codex/windows-certificate-fix]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        id: dotnet
+        with:
+          dotnet-version: 10.0.x
+      - name: Select .NET 10 SDK
+        run: dotnet new globaljson --sdk-version ${{ steps.dotnet.outputs.dotnet-version }} --roll-forward latestPatch
+      - name: Certificate compatibility and real HTTPS restart
+        run: dotnet run --project FileBridge.Tests -c Release -- --lifetime
+      - name: Transfer and persistence regressions
+        run: dotnet run --project FileBridge.Tests -c Release --no-build
