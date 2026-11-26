@@ -39,6 +39,27 @@ internal static class LifetimeChecks
             }
         }
         var now = DateTimeOffset.UtcNow;
+        var legacyMarked = new ReceiverIdentity(new string('a', 64),
+            await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Fixtures", "legacy-fb3.pfx")));
+        var legacyMarkedPfx = legacyMarked.Pfx.ToArray();
+        var legacyMarkedCode = legacyMarked.InvitationFor("127.0.0.1", 8787).Encode();
+        Check(legacyMarked.PublicKeyPin && legacyMarkedCode.StartsWith("fb3_"), "legacy UUID marker was lost");
+        using (var transport = legacyMarked.LoadCertificate())
+        {
+            Check(TransferSender.CertificateMatches(Invitation.Parse(legacyMarkedCode), transport),
+                "legacy UUID-marked identity changed its key during compatibility loading");
+            Check(transport.Extensions.All(extension => !string.IsNullOrEmpty(extension.Oid?.Value)), "legacy OID leaked into TLS");
+        }
+        Check(legacyMarked.Pfx.SequenceEqual(legacyMarkedPfx)
+            && legacyMarked.InvitationFor("127.0.0.1", 8787).Encode() == legacyMarkedCode, "legacy credentials or code were modified");
+        await using (var legacyMarkedReceiver = await TransferReceiver.StartAsync("127.0.0.1", 0,
+            Path.Combine(root, "legacy-marked-received"), identity: legacyMarked))
+        {
+            var legacySource = Path.Combine(root, "legacy-marked-source.txt");
+            await File.WriteAllTextAsync(legacySource, "existing fb3 identity works on Windows");
+            await TransferSender.SendAsync([new(legacySource, "verified.txt", new FileInfo(legacySource).Length)],
+                legacyMarkedReceiver.Invitation.Encode(), null, default);
+        }
         var identity = ReceiverIdentity.Create(now.AddYears(-3), now.AddYears(-2));
         var originalPfx = identity.Pfx.ToArray();
         var invite = identity.InvitationFor("127.0.0.1", 8787);

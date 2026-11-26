@@ -13,7 +13,7 @@ var root = Path.Combine(parent, "filebridge-tests-" + Guid.NewGuid().ToString("N
 Directory.CreateDirectory(root);
 try
 {
-    if (args.Contains("--ui")) { UiChecks.Run(root); return; }
+    if (args.Contains("--ui") || args.Contains("--ui-receive")) { UiChecks.Run(root, args.Contains("--ui-receive")); return; }
     if (args.Contains("--reverse")) { await ReverseChecks.RunAsync(root); return; }
     if (args.Contains("--lifetime")) { await LifetimeChecks.RunAsync(root); return; }
     ProtocolChecks.Run();

@@ -23,14 +23,52 @@ internal static class UiChecks
 {
     public static string Root { get; private set; } = "";
     public static Exception? Failure { get; set; }
+    public static bool ReceiveOnly { get; private set; }
 
-    public static void Run(string root)
+    public static void Run(string root, bool receiveOnly = false)
     {
         Root = root;
+        ReceiveOnly = receiveOnly;
         AppBuilder.Configure<UiTestApplication>().UsePlatformDetect()
             .StartWithClassicDesktopLifetime([], ShutdownMode.OnExplicitShutdown);
         if (Failure is not null) throw new Exception("Desktop regression failed.", Failure);
         Console.WriteLine("ALL UI PASS");
+    }
+
+    public static async Task CheckReceiveStartupAsync(MainWindow window)
+    {
+        T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
+        void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var settings = new ConnectionStore(Path.Combine(Root, "ui-connections", "connections.json"));
+        Check(settings.Load().Identity is null, "fresh receive check restored an unexpected identity");
+        Control<TextBox>("ReceiveAddress").Text = "127.0.0.1";
+        using (var listener = new TcpListener(IPAddress.Loopback, 0))
+        {
+            listener.Start();
+            Control<TextBox>("ReceivePort").Text = ((IPEndPoint)listener.LocalEndpoint).Port.ToString();
+        }
+        var destination = Path.Combine(Root, "receive-startup");
+        Control<TextBox>("ReceiveDirectory").Text = destination;
+        Control<TabControl>("TransferTabs").SelectedIndex = 1;
+        await Until(() => Control<Button>("ReceiveButton").IsEnabled, "automatic receive code creation");
+        var code = Control<TextBox>("ReceiveCode").Text;
+        Check(!string.IsNullOrEmpty(code) && Control<Button>("CopyButton").IsEnabled,
+            "automatic code creation failed: " + Control<TextBlock>("AppMessage").Text);
+        Check(settings.Load().Identity!.Token == Invitation.Parse(code!).Token, "automatic code was not saved");
+        Check(!Control<Button>("StopReceiveButton").IsEnabled, "creating a code started the listener");
+        Click("ReceiveButton");
+        await Until(() => Control<Button>("StopReceiveButton").IsEnabled || Control<Button>("ReceiveButton").IsEnabled,
+            "receive startup completed");
+        Check(Control<Button>("StopReceiveButton").IsEnabled, "receive startup failed: " + Control<TextBlock>("AppMessage").Text);
+        code = Control<TextBox>("ReceiveCode").Text!;
+        var source = Path.Combine(Root, "startup-source.txt");
+        await File.WriteAllTextAsync(source, "native desktop receiver works");
+        await TransferSender.SendAsync([new(source, "received.txt", new FileInfo(source).Length)], code, null, default);
+        Check(await File.ReadAllTextAsync(Path.Combine(destination, "received.txt")) == "native desktop receiver works", "desktop receive bytes differ");
+        Click("StopReceiveButton");
+        await Until(() => Control<Button>("ReceiveButton").IsEnabled, "native receive stop");
+        Check(Control<TextBox>("ReceiveCode").Text == code, "stopping receive changed the code");
+        Console.WriteLine("PASS native UI first-visit code creation / saved credentials / HTTPS startup and transfer / stop preserves code");
     }
 
     public static async Task CheckAsync(MainWindow window)
@@ -446,7 +484,11 @@ public sealed class UiTestApplication : Application
         desktop.MainWindow = window;
         Dispatcher.UIThread.Post(async () =>
         {
-            try { await UiChecks.CheckAsync(window); }
+            try
+            {
+                if (UiChecks.ReceiveOnly) await UiChecks.CheckReceiveStartupAsync(window);
+                else await UiChecks.CheckAsync(window);
+            }
             catch (Exception error) { UiChecks.Failure = error; }
             finally { window.Close(); desktop.Shutdown(); }
         });

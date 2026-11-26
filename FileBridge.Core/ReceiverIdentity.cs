@@ -1,6 +1,7 @@
 using System.Net;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
+using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
 
@@ -9,7 +10,9 @@ namespace FileBridge.Core;
 /// <summary>Local receiver credentials. Never send the PFX to a peer or include it in logs.</summary>
 public sealed record ReceiverIdentity(string Token, byte[] Pfx)
 {
-    // UUID-derived OID (ITU-T X.667); store the mode in the PFX so old preference writers cannot erase it.
+    // Keep the mode inside the PFX so preference writers cannot erase it.
+    private const string PublicKeyPinName = "FileBridge fb3";
+    // Legacy identity marker; Windows cannot enumerate this UUID-sized OID.
     private const string PublicKeyPinOid = "2.25.113014805965853602799128767528523782477";
 
     [JsonIgnore]
@@ -20,6 +23,7 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
 
     private static bool UsesPublicKeyPin(X509Certificate2 certificate)
     {
+        if (certificate.GetNameInfo(X509NameType.SimpleName, forIssuer: false) == PublicKeyPinName) return true;
         // Crypt32 cannot expose the UUID-sized OID through certificate.Extensions on Windows.
         try
         {
@@ -55,10 +59,9 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
 
     private static X509Certificate2 CreateCertificate(ECDsa key, DateTimeOffset notBefore, DateTimeOffset notAfter, bool publicKeyPin)
     {
-        var request = new CertificateRequest("CN=FileBridge", key, HashAlgorithmName.SHA256);
+        var request = new CertificateRequest(publicKeyPin ? $"CN={PublicKeyPinName}" : "CN=FileBridge", key, HashAlgorithmName.SHA256);
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
         request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.1") }, false));
-        if (publicKeyPin) request.CertificateExtensions.Add(new X509Extension(new Oid(PublicKeyPinOid, null), [0x05, 0x00], critical: false));
         return request.CreateSelfSigned(notBefore, notAfter);
     }
 
@@ -97,7 +100,7 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
         }
         // Keep the mode marker in the saved PFX; omit it from TLS so Windows can read every extension.
         using (certificate)
-        using (var key = certificate.GetECDsaPrivateKey() ?? throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。"))
+        using (var key = LoadSigningKey(certificate))
         using (var renewed = CreateCertificate(key, now.AddMinutes(-1), now.AddDays(365), publicKeyPin: false))
         {
             // Reimport so Schannel receives an ordinary user key rather than a transient signer handle.
@@ -109,6 +112,51 @@ public sealed record ReceiverIdentity(string Token, byte[] Pfx)
             }
             finally { CryptographicOperations.ZeroMemory(pfx); }
         }
+    }
+
+    private ECDsa LoadSigningKey(X509Certificate2 certificate)
+    {
+        if (certificate.GetNameInfo(X509NameType.SimpleName, forIssuer: false) == PublicKeyPinName)
+            return certificate.GetECDsaPrivateKey() ?? throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。");
+
+        // ECDsa certificate helpers enumerate extensions, so read legacy key bags directly.
+        var info = Pkcs12Info.Decode(Pfx, out var consumed, skipCopy: true);
+        if (consumed != Pfx.Length || info.IntegrityMode is not (Pkcs12IntegrityMode.None or Pkcs12IntegrityMode.Password))
+            throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。");
+        string? password = null;
+        if (info.IntegrityMode == Pkcs12IntegrityMode.Password)
+        {
+            if (info.VerifyMac("")) password = "";
+            else if (!info.VerifyMac((string?)null)) throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。");
+        }
+        foreach (var contents in info.AuthenticatedSafe)
+        {
+            if (contents.ConfidentialityMode == Pkcs12ConfidentialityMode.Password) contents.Decrypt(password);
+            foreach (var bag in contents.GetBags())
+            {
+                if (bag is not (Pkcs12ShroudedKeyBag or Pkcs12KeyBag)) continue;
+                var key = ECDsa.Create();
+                try
+                {
+                    if (bag is Pkcs12ShroudedKeyBag encrypted)
+                    {
+                        key.ImportEncryptedPkcs8PrivateKey(password.AsSpan(), encrypted.EncryptedPkcs8PrivateKey.Span, out consumed);
+                        if (consumed != encrypted.EncryptedPkcs8PrivateKey.Length) throw new CryptographicException();
+                    }
+                    else
+                    {
+                        var plain = (Pkcs12KeyBag)bag;
+                        key.ImportPkcs8PrivateKey(plain.Pkcs8PrivateKey.Span, out consumed);
+                        if (consumed != plain.Pkcs8PrivateKey.Length) throw new CryptographicException();
+                    }
+                    if (CryptographicOperations.FixedTimeEquals(key.ExportSubjectPublicKeyInfo(), certificate.PublicKey.ExportSubjectPublicKeyInfo()))
+                        return key;
+                }
+                catch { key.Dispose(); throw; }
+                key.Dispose();
+            }
+        }
+        throw new InvalidDataException("保存的接收凭据无效，请手动重新创建连接码。");
     }
 
     /// <summary>Derive a stable invitation; TLS renewal never changes a public-key-pinned code.</summary>

@@ -11,13 +11,13 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
-| Windows x64 | 2.5.9 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.9/FileBridge-windows-x64-2.5.9-framework-dependent.zip) |
-| macOS Apple Silicon (arm64) | 2.5.9 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.9/FileBridge-macOS-arm64-2.5.9-framework-dependent.zip) |
-| SHA-256 | 2.5.9 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.9/SHA256SUMS-2.5.9.txt) |
+| Windows x64 | 2.5.10 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.10/FileBridge-windows-x64-2.5.10-framework-dependent.zip) |
+| macOS Apple Silicon (arm64) | 2.5.10 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.10/FileBridge-macOS-arm64-2.5.10-framework-dependent.zip) |
+| SHA-256 | 2.5.10 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.10/SHA256SUMS-2.5.10.txt) |
 
-**2.5.9 自动建码、多开接收与 Windows 证书修复**：首次进入接收页自动创建连接码；多实例使用独立配置，端口被占用时自动选择空闲端口并更新连接码；修复 Windows 的 `oid.Value` 证书扩展读取异常。保留已有身份、连接码、断点数据和同密钥 TLS 续签。发布包由 `v2.5.9` 标签对应源码构建。
+**2.5.10 修复 Windows 首次建码和启动接收**：2.5.9 在 Windows 创建证书时仍可能出现 `oid.Value` 为空，导致连接码无法自动生成。新版本不再生成有兼容问题的大 OID，旧身份通过兼容路径保留原有公钥和连接码。已在实际 Windows 电脑验证自动建码、界面启动接收和真实 HTTPS 传输；继续支持多实例空闲端口选择、断点续传及同密钥证书续签。发布包在本机构建，由 `v2.5.10` 标签对应源码生成。
 
-**2.5.9 adds automatic code creation, multiple receivers and a Windows certificate fix:** opening the receive tab creates a missing code. Instances use separate profiles and automatically select an available receiving port when needed, updating the code. Windows certificate extension handling avoids the `oid.Value` error while preserving identities, saved codes, partial files and same-key TLS renewal. Downloads are built from `v2.5.9`.
+**2.5.10 fixes first-time code creation and receiving on Windows:** 2.5.9 could still fail while creating a certificate with an empty `oid.Value`. New identities no longer use the incompatible large OID, while existing identities retain their public key and code through a compatibility path. Automatic code creation, desktop receiver startup and real HTTPS transfers have passed on a Windows computer. Multiple receivers, available-port selection, resume and same-key certificate renewal remain supported. Packages are built locally from `v2.5.10`.
 
 ## 中文
 
