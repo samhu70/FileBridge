@@ -78,6 +78,12 @@ internal static class DualEndpointChecks
         catch (OperationCanceledException) when (pause.IsCancellationRequested) { }
         Check(fallback.Accepted == publicBefore, "cancelled connection still attempted public fallback");
         Console.WriteLine("PASS stalled endpoint timeout / fallback within eight seconds / user cancellation");
+        using var slowPublic = new TcpForwarder(target, 3500);
+        using var slowConnection = new PeerConnection(invite with { Url = direct.Url, PublicUrl = slowPublic.Url });
+        started = Environment.TickCount64;
+        Check((await slowConnection.GetAsync(ct)).BaseAddress!.GetLeftPart(UriPartial.Authority) == slowPublic.Url
+            && Environment.TickCount64 - started >= 3000, "slow public TLS handshake was rejected by the old three-second timeout");
+        Console.WriteLine("PASS public TLS handshake slower than three seconds / relaxed public timeout / direct remains fast");
     }
 
     private static void FunnelConfiguration()
@@ -119,13 +125,13 @@ internal static class DualEndpointChecks
         private int disposed, accepted;
         public int Accepted => Volatile.Read(ref accepted);
         public string Url { get; }
-        public TcpForwarder(int? target)
+        public TcpForwarder(int? target, int delayMilliseconds = 0)
         {
             listener.Start();
             Url = $"https://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}";
-            _ = AcceptAsync(target);
+            _ = AcceptAsync(target, delayMilliseconds);
         }
-        private async Task AcceptAsync(int? target)
+        private async Task AcceptAsync(int? target, int delayMilliseconds)
         {
             try
             {
@@ -134,17 +140,18 @@ internal static class DualEndpointChecks
                     var incoming = await listener.AcceptTcpClientAsync(stopping.Token);
                     clients.Add(incoming);
                     Interlocked.Increment(ref accepted);
-                    if (target is not null) _ = ForwardAsync(incoming, target.Value);
+                    if (target is not null) _ = ForwardAsync(incoming, target.Value, delayMilliseconds);
                 }
             }
             catch (Exception error) when (stopping.IsCancellationRequested && error is OperationCanceledException or SocketException) { }
         }
-        private async Task ForwardAsync(TcpClient incoming, int target)
+        private async Task ForwardAsync(TcpClient incoming, int target, int delayMilliseconds)
         {
             using var outgoing = new TcpClient();
             clients.Add(outgoing);
             try
             {
+                await Task.Delay(delayMilliseconds, stopping.Token);
                 await outgoing.ConnectAsync(IPAddress.Loopback, target, stopping.Token);
                 using var stream = incoming.GetStream();
                 using var peer = outgoing.GetStream();

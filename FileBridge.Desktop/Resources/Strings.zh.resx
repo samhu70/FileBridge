@@ -535,7 +535,7 @@
     <value>接收数据等待超时，请重新连接。</value>
   </data>
   <data name="Core.WaitingForSender" xml:space="preserve">
-    <value>发送方已暂停或尚未就绪，等待自动续传</value>
+    <value>等待发送方就绪或重新连接，将自动续传</value>
   </data>
   <data name="Core.Reconnecting" xml:space="preserve">
     <value>连接中断，正在自动重连</value>
@@ -596,5 +596,20 @@
   </data>
   <data name="Core.TailscaleCommandFailed" xml:space="preserve">
     <value>Tailscale 命令未成功，请检查应用是否正在运行并已登录。</value>
+  </data>
+  <data name="Core.RetryWaiting" xml:space="preserve">
+    <value>连接中断，第 {0} 次重连，{1} 秒后重试</value>
+  </data>
+  <data name="Core.RetryConnecting" xml:space="preserve">
+    <value>连接中断，正在第 {0} 次自动重连</value>
+  </data>
+  <data name="RetryHelp" xml:space="preserve">
+    <value>连接恢复后自动续传，可点击“暂停”停止重试。最近错误：{0}</value>
+  </data>
+  <data name="Core.Paused" xml:space="preserve">
+    <value>已暂停</value>
+  </data>
+  <data name="Core.ReceiveInterrupted" xml:space="preserve">
+    <value>接收连接中断，等待发送方自动重连。</value>
   </data>
 </root>

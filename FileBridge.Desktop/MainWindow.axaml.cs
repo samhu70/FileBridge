@@ -104,6 +104,11 @@ public sealed partial class MainWindow : Window
             SendDetail.Text = language.Text("ReverseOfferReadyDetail");
             return;
         }
+        if (p.Stage == TransferStage.Retrying)
+        {
+            SendDetail.Text = language.Text("RetryHelp", language.CoreText(p.Error ?? ""));
+            return;
+        }
         SendDetail.Text = $"{FormatBytes(p.Completed)} / {FormatBytes(p.Total)}"
             + (speed > 0 ? " · " + (recent ? language.Text("SendRecentSpeed", FormatBytes((long)speed) + "/s") : FormatBytes((long)speed) + "/s") : "")
             + " · " + TransferDisplay.ParallelMode(p.ParallelChunks, language);
@@ -261,6 +266,8 @@ public sealed partial class MainWindow : Window
         catch (OperationCanceledException)
         {
             sendPaused = true;
+            if (sendProgress is { Stage: not (TransferStage.SendComplete or TransferStage.AlreadyComplete) } current)
+                UpdateSendProgress(current with { Stage = TransferStage.Paused, BytesPerSecond = 0, RetryDelaySeconds = 0 });
             Message(reverse ? "ReverseSendPaused" : "Paused");
             SetSendAction(reverse ? "StartSending" : "ContinueSending");
         }

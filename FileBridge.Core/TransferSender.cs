@@ -12,8 +12,6 @@ namespace FileBridge.Core;
 /// <summary>Bounded parallel chunk sender with ordered receiver commits, resume, and retry.</summary>
 public static class TransferSender
 {
-    private const int MaxAttempts = 10;
-
     public static IReadOnlyList<TransferFile> Collect(IEnumerable<string> paths)
     {
         var result = new List<TransferFile>();
@@ -59,7 +57,7 @@ public static class TransferSender
         catch (Exception error) when (error is CryptographicException or NotSupportedException) { return false; }
     }
 
-    /// <summary>Send files using at most the selected number of parallel chunk requests.</summary>
+    /// <summary>Send files with bounded parallel requests, retrying transient connection failures until cancelled.</summary>
     /// <param name="files">Ordered source files.</param>
     /// <param name="code">Receiver's authenticated invitation.</param>
     /// <param name="progress">Optional progress callback.</param>
@@ -73,39 +71,56 @@ public static class TransferSender
         using var connection = new PeerConnection(invite);
         foreach (var source in files)
         {
+            var reporting = new SendingProgress(progress);
             ct.ThrowIfCancellationRequested();
-            progress?.Report(new(source.RelativeName, TransferStage.CalculatingHash, 0, source.Size, ParallelChunks: 0));
+            reporting.Report(new(source.RelativeName, TransferStage.CalculatingHash, 0, source.Size, ParallelChunks: 0));
             var before = new FileInfo(source.LocalPath);
             var modified = before.LastWriteTimeUtc;
             var size = before.Length;
             var hash = await Wire.FileHashAsync(source.LocalPath, ct);
             var m = new FileManifest(source.RelativeName, size, hash);
-            for (var attempt = 0; ; attempt++)
+            for (var attempt = 0; ; attempt = Math.Min(attempt + 1, int.MaxValue - 1))
             {
                 var current = new FileInfo(source.LocalPath);
                 if (current.Length != size || current.LastWriteTimeUtc != modified) throw new IOException("源文件发生变化，请停止编辑后重新发送。");
                 try
                 {
                     var client = await connection.GetAsync(ct);
-                    await UploadAsync(client, source.LocalPath, m, progress, ct, StreamsForSize(size, parallelChunks));
+                    await UploadAsync(client, source.LocalPath, m, reporting, ct, StreamsForSize(size, parallelChunks));
                     break;
                 }
-                catch (Exception error) when (attempt < MaxAttempts - 1 && Retryable(error, ct))
+                catch (Exception error) when (Retryable(error, ct))
                 {
                     connection.Reset();
-                    progress?.Report(new(m.Name, TransferStage.Retrying, 0, m.Size, ParallelChunks: 0,
-                        RetryAttempt: attempt + 1, RetryLimit: MaxAttempts));
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct);
+                    for (var seconds = Math.Min(1 << Math.Min(attempt, 4), 15); seconds > 0; seconds--)
+                    {
+                        reporting.Retry(attempt + 1, seconds, error.Message);
+                        await Task.Delay(TimeSpan.FromSeconds(1), ct);
+                    }
+                    reporting.Retry(attempt + 1, 0, error.Message);
                 }
             }
         }
     }
+
+    private sealed class SendingProgress(IProgress<TransferProgress>? target) : IProgress<TransferProgress>
+    {
+        private TransferProgress last = new("", TransferStage.Pending);
+        public void Report(TransferProgress value) { last = value; target?.Report(value); }
+        public void Retry(int attempt, int seconds, string error) => Report(last with
+        {
+            Stage = TransferStage.Retrying, BytesPerSecond = 0, ParallelChunks = 0,
+            RetryAttempt = attempt, RetryLimit = 0, RetryDelaySeconds = seconds, Error = error
+        });
+    }
+
     internal static bool Retryable(Exception error, CancellationToken ct) => !ct.IsCancellationRequested && error switch
     {
         TransferException e => e.Status >= 500 || e.Status is 408 or 429 || e.Status == 409 && e.Message.Contains("重新连接", StringComparison.Ordinal),
         HttpRequestException e when e.InnerException is AuthenticationException => false,
         HttpRequestException => true,
         TaskCanceledException => true,
+        HttpIOException => true,
         EndOfStreamException => true,
         _ => false
     };

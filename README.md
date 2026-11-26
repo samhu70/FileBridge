@@ -30,7 +30,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 - **跨平台传输**：在 Windows 与 macOS 之间发送文件或整个文件夹，支持中文文件名和目录。
 - **无需应用账号**：FileBridge 本身无需注册；通过局域网、Tailscale 或其他已连通的 VPN 传输，不依赖 FileBridge 中转服务器。
 - **连接码配对与保留**：首次进入接收页自动创建缺少的连接码；发送端记住输入，接收端保存认证凭据、地址、端口和目录，重启后可继续沿用。两端均提供手动更换入口。
-- **暂停与断点续传**：暂停、网络中断或接收端重启后，可从已校验的连续位置恢复。接收端重启可沿用仍有效的原连接码。
+- **暂停与断点续传**：暂停、网络中断或接收端重启后，可从已校验的连续位置恢复。2.5.12 起，可恢复的连接错误会持续自动重连，不再到 10 次后退出；以 1、2、4、8、15 秒退避并保持最长 15 秒间隔，显示倒计时和最后错误。手动暂停立即取消自动重试；认证、证书和文件校验错误仍会停止并提示。接收端需要保持启动，恢复后重新校验断点。
 - **并行分块**：发送端可选 1–10 路上限，默认 4 路。文件不超过 4 MiB 时自动单路；更大文件按分块数、用户上限和对端能力取较小值。例如默认上限下，6 MiB 用 2 路，20 MiB 用 4 路。
 - **完整性校验**：普通上传每块 4 MiB；新版之间反向下载优先使用 256 KiB 分块。分块和最终文件都校验 SHA-256；续传时也检查已有数据。
 - **同名文件保护**：不覆盖已有的不同内容文件；内容一致的成品自动跳过。
@@ -64,7 +64,7 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 
 接收方在「接收文件」勾选「启用公网备用入口（对方无需 Tailscale）」后，点击「开始接收」，再复制连接码。首次使用可能需要按界面链接授权 Tailscale Funnel，并等待几分钟让公网 DNS 生效。两端均使用支持此功能的新版 FileBridge。
 
-- 新码包含直连和公网两个地址，共用原有认证令牌和 TLS 公钥校验。客户端优先直连，约三秒内无法连接时尝试公网；传输中断后会重新选择通道并校验续传进度。
+- 新码包含直连和公网两个地址，共用原有认证令牌和 TLS 公钥校验。客户端优先直连，直连探测三秒内失败时尝试公网；2.5.12 起公网探测放宽为十五秒，避免慢链路误判。传输中断后会重新选择通道并校验续传进度。
 - 接收电脑需要安装并登录 Tailscale；走公网的发送方无需 Tailscale，也无需接收设备共享邀请。无需自建 FileBridge 中转服务。
 - 公网入口只转发当前窗口的 FileBridge 服务，不授予远程桌面、SSH 或电脑其他服务的访问权限。已有 Tailscale 设备共享及访问规则仍独立生效，连接码不会收紧那些规则。
 - 公网默认关闭。停止接收、关闭窗口或程序退出会撤销本窗口的临时转发。持码者在接收开启期间可以上传文件，反向发送时也可下载明确选中的文件，因此不要公开连接码；泄露后停止接收并手动重建。
@@ -131,7 +131,7 @@ If FileBridge is useful to you, you can leave an optional tip through [Stripe](h
 - **Cross-platform transfers** between Windows and macOS, including entire folders and Unicode file names.
 - **No FileBridge account required.** Transfer over a reachable LAN, Tailscale or another VPN, without a FileBridge relay server.
 - **Saved connection codes:** the sender remembers its input, and the receiver keeps its credentials, address, port and destination across restarts. Both ends provide a manual change entry.
-- **Pause and resume** after a pause, network interruption or receiver restart, starting from the verified contiguous prefix. A receiver restart can reuse the existing valid connection code.
+- **Pause and resume** after a pause, network interruption or receiver restart, starting from the verified contiguous prefix. From 2.5.12, recoverable connection errors keep retrying automatically without a ten-attempt limit, using 1, 2, 4, 8, then 15-second backoff with a countdown and the last error. Pause cancels retrying immediately; authentication, certificate and file-integrity errors still stop with an error. The receiver must remain started, and reconnection verifies the saved prefix.
 - **Parallel chunks:** choose a limit of 1–10 streams, default 4. Files up to 4 MiB use one stream. Larger files use the minimum of their chunk count, your limit and the receiver capability. With the default limit, 6 MiB uses 2 streams and 20 MiB uses 4.
 - **SHA-256 verification** for every chunk, the resumed prefix and the completed file. Ordinary uploads use 4 MiB blocks; reverse transfers between new clients prefer 256 KiB blocks.
 - **Existing-file protection:** different contents are never overwritten; already-completed files with matching contents are skipped.
@@ -162,7 +162,7 @@ After restarting the receiver, select **Start receiving** to reuse the saved cod
 
 On the receiver, select **Enable public fallback (peer does not need Tailscale)**, start receiving, and copy the code. First use may require authorizing Tailscale Funnel through the link shown in the app; public DNS can take several minutes to propagate. Both peers need an updated FileBridge client for automatic public fallback.
 
-The code keeps the direct and public endpoints under the same token and TLS pin. Clients prefer direct access, try the public endpoint after a three-second connection timeout, and select again after an interruption while verifying the saved prefix. The receiving computer needs Tailscale; the public peer needs neither Tailscale nor a device-sharing invitation. No self-hosted FileBridge relay is required.
+The code keeps the direct and public endpoints under the same token and TLS pin. Clients prefer direct access, try the public endpoint after a three-second direct connection timeout, and select again after an interruption while verifying the saved prefix. From 2.5.12, the public endpoint gets fifteen seconds to complete its connection probe. The receiving computer needs Tailscale; the public peer needs neither Tailscale nor a device-sharing invitation. No self-hosted FileBridge relay is required.
 
 Public access is off by default and forwards only this window's authenticated FileBridge service. It does not grant SSH, remote desktop or other service access. Existing Tailscale shares and policies remain independent and are not tightened by a FileBridge code. Code holders can upload while receiving is active and download explicitly offered reverse-send files; keep the code private and manually recreate it if leaked.
 

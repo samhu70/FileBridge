@@ -40,6 +40,11 @@ public sealed partial class TransferReceiver : IAsyncDisposable
 
         public void Start() { lock (clock) { if (!clock.IsRunning) clock.Start(); } }
         public void Stop() { lock (clock) active = false; }
+        public void WaitForReconnect(IProgress<TransferProgress>? progress)
+        {
+            lock (clock) progress?.Report(new(Manifest.Name, TransferStage.WaitingForSender, committed, Manifest.Size,
+                ParallelChunks: ParallelChunks, Error: "接收连接中断，等待发送方自动重连。"));
+        }
         public void Report(IProgress<TransferProgress>? progress, int bytes = 0, long? committedOffset = null)
         {
             lock (clock)
@@ -187,7 +192,8 @@ public sealed partial class TransferReceiver : IAsyncDisposable
                 context.Response.StatusCode = error switch { TransferException e => e.Status, InvalidDataException => 400, JsonException => 400, _ => 500 };
                 await context.Response.WriteAsync(error.Message, CancellationToken.None);
             }
-            progress?.Report(new("", TransferStage.ReceiveError, Error: error.Message));
+            if (error is not TransferException { Status: 408, InnerException: IOException })
+                progress?.Report(new("", TransferStage.ReceiveError, Error: error.Message));
         }
     }
 
@@ -260,12 +266,20 @@ public sealed partial class TransferReceiver : IAsyncDisposable
         session.Start();
         var buffer = new byte[(int)length];
         var read = 0;
-        while (read < buffer.Length)
+        try
         {
-            var count = await context.Request.Body.ReadAsync(buffer.AsMemory(read), ct);
-            if (count == 0) throw new EndOfStreamException();
-            read += count;
-            session.Report(progress, bytes: count);
+            while (read < buffer.Length)
+            {
+                var count = await context.Request.Body.ReadAsync(buffer.AsMemory(read), ct);
+                if (count == 0) throw new EndOfStreamException();
+                read += count;
+                session.Report(progress, bytes: count);
+            }
+        }
+        catch (IOException error)
+        {
+            session.WaitForReconnect(progress);
+            throw new TransferException(408, "接收连接中断，等待发送方自动重连。", error);
         }
         return await CommitChunkAsync(session, partial, offset, buffer, context.Request.Headers["X-Chunk-SHA256"].ToString(), ct);
     }

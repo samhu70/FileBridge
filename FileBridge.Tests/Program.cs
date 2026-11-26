@@ -19,8 +19,11 @@ try
     if (args.Contains("--reverse")) { await ReverseChecks.RunAsync(root); return; }
     if (args.Contains("--lifetime")) { await LifetimeChecks.RunAsync(root); return; }
     if (args.Contains("--dual")) { await DualEndpointChecks.RunAsync(root); return; }
+    if (args.Contains("--retry")) { await RetryChecks.RunAsync(root); return; }
+    if (args.Contains("--receive-disconnect")) { await ReceiveDisconnectChecks.RunAsync(root); return; }
     ProtocolChecks.Run();
     await DualEndpointChecks.RunAsync(root);
+    await ReceiveDisconnectChecks.RunAsync(root);
     await ConnectionChecks.RunAsync(root);
     await LifetimeChecks.RunAsync(root);
     await AdaptiveStreamChecks.RunAsync(root);
@@ -33,6 +36,7 @@ try
     await RestartResume();
     await PauseResume();
     await RetryResume();
+    await RetryChecks.RunAsync(root);
     await ParallelChunks();
     await StreamSettings();
     await PartialChunkTelemetry();
@@ -135,6 +139,10 @@ void ReceiveDisplayChecks()
     Check(TransferDisplay.StageText(progress, en) == "Receiving", "typed receiving stage not translated");
     Check(TransferDisplay.StageText(progress with { Stage = TransferStage.Retrying, RetryAttempt = 3, RetryLimit = 10 }, en)
         == "Connection interrupted; resuming 3/10", "typed retry fields not rendered");
+    Check(TransferDisplay.StageText(progress with { Stage = TransferStage.Retrying, RetryAttempt = 11, RetryDelaySeconds = 15 }, en)
+        == "Connection interrupted; retry 11 in 15 s", "unlimited retry countdown not rendered");
+    Check(TransferDisplay.StageText(progress with { Stage = TransferStage.Retrying, RetryAttempt = 11 }, zh)
+        == "连接中断，正在第 11 次自动重连", "unlimited retry attempt not rendered");
     Check(TransferDisplay.StageText(progress with { Stage = TransferStage.ReceiveError, Error = "数据块校验失败，未写入。" }, en)
         == "Receive error: Chunk verification failed. No data was written.", "typed receive error not translated");
     Check(TransferDisplay.StageText(progress with { Stage = TransferStage.ReceiveError, Error = "未知系统错误" }, zh)
@@ -292,7 +300,8 @@ async Task RetryResume()
     await TransferSender.SendAsync([new(source, "retry.bin", bytes.Length)], receiver.Invitation.Encode(),
         new InlineProgress(p => events.Add(p)), default);
     var retries = events.Where(p => p.Stage == TransferStage.Retrying).ToArray();
-    Check(begins == 2 && retries is [{ RetryAttempt: 1, RetryLimit: 10 }] && errorReported,
+    Check(begins == 2 && retries is [{ RetryAttempt: 1, RetryLimit: 0, RetryDelaySeconds: 1 },
+        { RetryAttempt: 1, RetryLimit: 0, RetryDelaySeconds: 0 }] && errorReported,
         "transient error did not produce structured retry/error progress");
     Check((await File.ReadAllBytesAsync(Path.Combine(destination, "retry.bin"))).SequenceEqual(bytes), "retry contents differ");
     Console.WriteLine("PASS transient HTTP 503 / automatic retry / structured retry and error / checksum");

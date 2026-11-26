@@ -16,7 +16,7 @@ internal sealed class PeerConnection(Invitation invitation) : IDisposable
             try
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                timeout.CancelAfter(TimeSpan.FromSeconds(3));
+                timeout.CancelAfter(TimeSpan.FromSeconds(url.Equals(invitation.Url, StringComparison.OrdinalIgnoreCase) ? 3 : 15));
                 await TransferSender.RequestAsync(candidate, "v2/ping", null, timeout.Token);
                 return client = candidate;
             }

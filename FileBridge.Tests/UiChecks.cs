@@ -38,6 +38,7 @@ internal static class UiChecks
     public static async Task CheckReceiveStartupAsync(MainWindow window)
     {
         await CheckPublicPreferencesAsync();
+        await CheckRetryAsync();
         T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
         void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         var settings = new ConnectionStore(Path.Combine(Root, "ui-connections", "connections.json"));
@@ -77,6 +78,7 @@ internal static class UiChecks
     public static async Task CheckAsync(MainWindow window)
     {
         Check(SynchronizationContext.Current is AvaloniaSynchronizationContext, "UI context not installed");
+        await CheckRetryAsync();
         await CheckPublicPreferencesAsync();
         await CheckMultiInstanceAsync();
         T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
@@ -375,6 +377,63 @@ internal static class UiChecks
         finally { reverseHost.Close(); reversePeer.Close(); }
         Console.WriteLine("PASS UI reverse send / outgoing-only receive / pause and resume / checksum / peer-code persistence / controls restored");
 
+    }
+
+    private static async Task CheckRetryAsync()
+    {
+        var source = Path.Combine(Root, "ui-retry.txt");
+        var destination = Path.Combine(Root, "ui-retry-received");
+        await File.WriteAllTextAsync(source, "automatic retry from the desktop");
+        var unavailable = 1;
+        var requests = 0;
+        await using var receiver = await TransferReceiver.StartAsync("127.0.0.1", 0, destination, new InlineProgress(p =>
+        {
+            if (p.Stage != TransferStage.WaitingForData) return;
+            Interlocked.Increment(ref requests);
+            if (Volatile.Read(ref unavailable) != 0) throw new TransferException(503, "temporary receiver outage");
+        }));
+        var window = new MainWindow(Path.Combine(Root, "retry-ui", "connections.json"));
+        T Control<T>(string name) where T : Control => window.FindControl<T>(name)!;
+        void Click(string name) => Control<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        FileRow Row() => Control<ItemsControl>("FileList").Items.Cast<FileRow>().Single();
+        window.Show();
+        try
+        {
+            Control<TextBox>("SendCode").Text = receiver.Invitation.Encode();
+            await window.AddPathsAsync([source]);
+            Click("SendButton");
+            await Until(() => Row().Progress is { Stage: TransferStage.Retrying, RetryAttempt: 2, RetryDelaySeconds: > 0 }, "UI automatic retry countdown");
+            Check(!Control<Button>("SendButton").IsEnabled && !Control<Button>("ChangeSendCodeButton").IsEnabled
+                && Control<Button>("PauseButton").IsEnabled, "reconnection unlocked conflicting controls or disabled pause");
+            Check(Control<TextBlock>("SendDetail").Text == Localization.Current.Text("RetryHelp", "temporary receiver outage"),
+                "UI retry did not show recovery guidance and the last error");
+            Volatile.Write(ref unavailable, 0);
+            await Until(() => Control<Button>("SendButton").IsEnabled, "UI automatic recovery without another click");
+            Check(Row().Progress.Stage == TransferStage.SendComplete
+                && await File.ReadAllTextAsync(Path.Combine(destination, "ui-retry.txt")) == "automatic retry from the desktop", "UI did not resume automatically");
+
+            Click("ClearButton");
+            var pausedSource = Path.Combine(Root, "ui-retry-pause.txt");
+            await File.WriteAllTextAsync(pausedSource, "pause cancels retry");
+            await window.AddPathsAsync([pausedSource]);
+            Volatile.Write(ref unavailable, 1);
+            Click("SendButton");
+            await Until(() => Row().Progress is { Stage: TransferStage.Retrying, RetryAttempt: 2, RetryDelaySeconds: > 0 }, "UI retry before pause");
+            Click("PauseButton");
+            await Until(() => Control<Button>("SendButton").IsEnabled, "UI retry pause");
+            Check(Row().Progress.Stage == TransferStage.Paused && !Control<Button>("PauseButton").IsEnabled
+                && Control<TextBlock>("SendStatus").Text!.StartsWith(Localization.Current.Text("Core.Paused")), "paused retry still appeared active");
+            var stoppedRequests = Volatile.Read(ref requests);
+            await Task.Delay(1200);
+            Check(Volatile.Read(ref requests) == stoppedRequests && Row().Progress.Stage == TransferStage.Paused,
+                "manual pause still retried in the background");
+            Volatile.Write(ref unavailable, 0);
+            Click("SendButton");
+            await Until(() => Control<Button>("SendButton").IsEnabled, "UI continue after paused retry");
+            Check(Row().Progress.Stage == TransferStage.SendComplete, "manual continue failed after cancelling retry");
+        }
+        finally { window.Close(); }
+        Console.WriteLine("PASS UI retry countdown / locked controls / automatic recovery / manual pause stops background retry / continue");
     }
 
     private static async Task CheckPublicPreferencesAsync()

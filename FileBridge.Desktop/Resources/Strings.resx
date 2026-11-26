@@ -535,7 +535,7 @@
     <value>Timed out waiting for more file data. Reconnect to resume.</value>
   </data>
   <data name="Core.WaitingForSender" xml:space="preserve">
-    <value>Sender paused or not ready; waiting to resume automatically</value>
+    <value>Waiting for the sender to be ready or reconnect; resumes automatically</value>
   </data>
   <data name="Core.Reconnecting" xml:space="preserve">
     <value>Connection interrupted; reconnecting automatically</value>
@@ -596,5 +596,20 @@
   </data>
   <data name="Core.TailscaleCommandFailed" xml:space="preserve">
     <value>The Tailscale command failed. Check that the app is running and signed in.</value>
+  </data>
+  <data name="Core.RetryWaiting" xml:space="preserve">
+    <value>Connection interrupted; retry {0} in {1} s</value>
+  </data>
+  <data name="Core.RetryConnecting" xml:space="preserve">
+    <value>Connection interrupted; reconnecting (attempt {0})</value>
+  </data>
+  <data name="RetryHelp" xml:space="preserve">
+    <value>Resumes automatically when the connection recovers. Select Pause to stop retrying. Last error: {0}</value>
+  </data>
+  <data name="Core.Paused" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+  <data name="Core.ReceiveInterrupted" xml:space="preserve">
+    <value>Receive connection interrupted; waiting for the sender to reconnect.</value>
   </data>
 </root>

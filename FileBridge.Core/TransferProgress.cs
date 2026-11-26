@@ -17,7 +17,8 @@ public enum TransferStage
     Retrying,
     ReceiveError,
     WaitingForPeer,
-    WaitingForSender
+    WaitingForSender,
+    Paused
 }
 
 /// <summary>Local UI progress for one file; byte counts include verified resumed data.</summary>
@@ -30,4 +31,5 @@ public sealed record TransferProgress(
     int ParallelChunks = 1,
     string? Error = null,
     int RetryAttempt = 0,
-    int RetryLimit = 0);
+    int RetryLimit = 0,
+    int RetryDelaySeconds = 0);

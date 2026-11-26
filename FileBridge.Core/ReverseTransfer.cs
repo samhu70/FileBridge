@@ -171,7 +171,7 @@ public static class ReverseTransfer
         }
         // A completion receipt is sent only after the local final file passes SHA-256 and atomic publication.
         // Retry this receipt against the same offer: a completed sender has already withdrawn its file list.
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; ; attempt = Math.Min(attempt + 1, 4))
         {
             try
             {
@@ -179,8 +179,12 @@ public static class ReverseTransfer
                 if (!receipt.Done || receipt.Offset != manifest.Size) throw new InvalidDataException("接收端确认进度不一致。");
                 break;
             }
-            catch (Exception error) when (attempt < 9 && TransferSender.Retryable(error, ct))
-            { connection.Reset(); await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << Math.Min(attempt, 4), 15)), ct); }
+            catch (Exception error) when (TransferSender.Retryable(error, ct))
+            {
+                connection.Reset();
+                progress?.Report(new(manifest.Name, TransferStage.Retrying, manifest.Size, manifest.Size, ParallelChunks: 0));
+                await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << attempt, 15)), ct);
+            }
         }
     }
 

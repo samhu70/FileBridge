@@ -13,6 +13,7 @@ internal static class TransferDisplay
         TransferStage.WaitingForData => language.Text("Core.WaitingForData"),
         TransferStage.WaitingForSender => language.Text("Core.WaitingForSender"),
         TransferStage.WaitingForPeer => language.Text("Core.WaitingForPeer"),
+        TransferStage.Paused => language.Text("Core.Paused"),
         TransferStage.Receiving => language.Text("Core.Receiving"),
         TransferStage.VerifyingFile => language.Text("Core.Verifying"),
         TransferStage.ReceiveComplete => language.Text("Core.ReceiveComplete"),
@@ -20,8 +21,10 @@ internal static class TransferDisplay
         TransferStage.Sending => language.Text("Core.Sending"),
         TransferStage.SendComplete => language.Text("Core.SendVerified"),
         TransferStage.AlreadyComplete => language.Text("Core.AlreadyComplete"),
-        TransferStage.Retrying => progress.RetryLimit <= 0 ? language.Text("Core.Reconnecting")
-            : language.Text("CorePrefix.Retry") + $"{progress.RetryAttempt}/{progress.RetryLimit}",
+        TransferStage.Retrying => progress.RetryLimit > 0 ? language.Text("CorePrefix.Retry") + $"{progress.RetryAttempt}/{progress.RetryLimit}"
+            : progress.RetryAttempt <= 0 ? language.Text("Core.Reconnecting")
+            : progress.RetryDelaySeconds > 0 ? language.Text("Core.RetryWaiting", progress.RetryAttempt, progress.RetryDelaySeconds)
+            : language.Text("Core.RetryConnecting", progress.RetryAttempt),
         TransferStage.ReceiveError => language.Text("CorePrefix.ReceiveError") + language.CoreText(progress.Error ?? ""),
         _ => throw new ArgumentOutOfRangeException(nameof(progress), progress.Stage, "Unknown transfer stage.")
     };
