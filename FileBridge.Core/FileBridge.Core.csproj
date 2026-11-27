@@ -7,4 +7,9 @@
   <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
   <ItemGroup><PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="FileBridge.Tests" /></ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FileBridge" />
+    <InternalsVisibleTo Include="filebridge" />
+    <InternalsVisibleTo Include="FileBridge.Cli.Tests" />
+  </ItemGroup>
 </Project>

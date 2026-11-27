@@ -2,8 +2,8 @@
 
 <img src="FileBridge.Desktop/Assets/logo.png" width="96" alt="FileBridge logo" />
 
-Windows 与 macOS 之间的文件传输工具，支持暂停续传、并行分块和 SHA-256 校验。
-A desktop file transfer app for Windows and macOS, with pause/resume, parallel chunks and SHA-256 verification.
+Windows / macOS 桌面版与 Linux 无界面 CLI 文件传输工具，支持暂停续传、并行分块和 SHA-256 校验。
+A file transfer app with Windows/macOS desktop clients and a headless Linux CLI, with pause/resume, parallel chunks and SHA-256 verification.
 
 [中文](#中文) · [English](#english) · [所有下载 / All releases](https://github.com/samhu70/FileBridge/releases)
 
@@ -11,9 +11,16 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 | 平台 / Platform | 版本 / Version | 下载 / Download |
 | --- | --- | --- |
+| Linux CLI x64 | 2.5.12 | [Linux x64 TAR.GZ](https://github.com/samhu70/FileBridge/releases/download/v2.5.12/FileBridge-cli-linux-x64-2.5.12.tar.gz) |
+| Linux CLI ARM64 | 2.5.12 | [Linux ARM64 TAR.GZ](https://github.com/samhu70/FileBridge/releases/download/v2.5.12/FileBridge-cli-linux-arm64-2.5.12.tar.gz) |
+| Linux CLI SHA-256 | 2.5.12 | [CLI SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.12/SHA256SUMS-cli-2.5.12.txt) |
 | Windows x64 | 2.5.11 | [Windows ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/FileBridge-windows-x64-2.5.11-framework-dependent.zip) |
 | macOS Apple Silicon (arm64) | 2.5.11 | [macOS ZIP](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/FileBridge-macOS-arm64-2.5.11-framework-dependent.zip) |
-| SHA-256 | 2.5.11 | [SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/SHA256SUMS-2.5.11.txt) |
+| Desktop SHA-256 | 2.5.11 | [Desktop SHA256SUMS](https://github.com/samhu70/FileBridge/releases/download/v2.5.11/SHA256SUMS-2.5.11.txt) |
+
+**2.5.12：新增 Linux CLI 独立运行包。** 支持普通收发、断点续传和反向接收，包内提供 `./install` 快捷配置全局命令。`filebridge receive` 的地址与保存目录均可省略，默认保存到当前工作目录；`filebridge receive --code '对端连接码'` 可主动连接并等待对端反向发送。Linux 包自带 .NET 运行时。此次发布仅提供 Linux CLI 新包；Windows/macOS 桌面安装包继续使用下方 2.5.11，Mac UI 安装 CLI 按钮和云端 ID/密钥服务尚未加入。
+
+**2.5.12: self-contained Linux CLI packages.** Ordinary send/receive, verified resume and outgoing-only reverse receiving are available, with a bundled `./install` script for PATH setup. Address and destination options are optional for `filebridge receive`; the destination defaults to the current working directory. Use `filebridge receive --code 'peer-code'` to connect and wait for the peer's reverse-send offer. This release provides new Linux CLI packages only; Windows/macOS desktop downloads remain 2.5.11. The Mac UI CLI-install button and cloud ID/key discovery are not included.
 
 **2.5.11：同一个连接码，优先直连、失败后走公网。** 接收方可选启用 Tailscale Funnel 公网备用入口，公网发送方无需 Tailscale；两条通道共用认证令牌与 TLS 公钥校验，支持断点续传。停止接收或退出会撤销本窗口的临时公网入口，保留已有服务。继续包含 Windows 首次建码修复、多实例空闲端口选择和长期连接码。Mac 与 Windows 原包均在本地构建和验证，未使用 GitHub Actions；源码对应 `v2.5.11`。
 
@@ -27,7 +34,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 ### 软件功能
 
-- **跨平台传输**：在 Windows 与 macOS 之间发送文件或整个文件夹，支持中文文件名和目录。
+- **跨平台传输**：在 Windows/macOS 桌面版与 Linux CLI 之间发送文件或整个文件夹，支持中文文件名和目录。
 - **无需应用账号**：FileBridge 本身无需注册；通过局域网、Tailscale 或其他已连通的 VPN 传输，不依赖 FileBridge 中转服务器。
 - **连接码配对与保留**：首次进入接收页自动创建缺少的连接码；发送端记住输入，接收端保存认证凭据、地址、端口和目录，重启后可继续沿用。两端均提供手动更换入口。
 - **暂停与断点续传**：暂停、网络中断或接收端重启后，可从已校验的连续位置恢复。2.5.12 起，可恢复的连接错误会持续自动重连，不再到 10 次后退出；以 1、2、4、8、15 秒退避并保持最长 15 秒间隔，显示倒计时和最后错误。手动暂停立即取消自动重试；认证、证书和文件校验错误仍会停止并提示。接收端需要保持启动，恢复后重新校验断点。
@@ -41,7 +48,7 @@ A desktop file transfer app for Windows and macOS, with pause/resume, parallel c
 
 ### 运行要求
 
-下载包为 **framework-dependent 精简包**，不含 .NET 运行时。请先安装与系统架构匹配的：
+Windows/macOS 桌面下载包为 **framework-dependent 精简包**，不含 .NET 运行时；Linux CLI 独立包自带运行时。桌面版请先安装与系统架构匹配的：
 
 - .NET 10 Runtime (`Microsoft.NETCore.App 10.0.x`)；
 - ASP.NET Core 10 Runtime (`Microsoft.AspNetCore.App 10.0.x`)。
@@ -102,6 +109,70 @@ Windows 解压后打开 `FileBridge.exe`；Mac 解压后打开 `FileBridge.app`�
 - 传输期间不要修改源文件或临时文件。多个文件按顺序发送，并行针对单个文件的分块，不保证在所有网络上提速。
 - 当前发布包没有 Apple Developer ID 公证或 Windows Authenticode 签名。
 
+### Linux CLI
+
+CLI 无需图形界面，直接复用桌面版的传输核心和 `fb2_` / `fb3_` 连接码，可与桌面版双向传输文件或目录。提供普通发送、接收和主动连接对端的反向接收；暂不提供 CLI 反向发送或接收端 Funnel 管理。双方需要通过局域网、Tailscale 或其他网络互通。
+
+安装 .NET 10 SDK 后，从源码发布适合本机架构的独立包（x64 使用 `linux-x64`，ARM64 使用 `linux-arm64`）：
+
+```sh
+dotnet publish FileBridge.Cli -c Release -r linux-x64 --self-contained true -o publish/cli/linux-x64
+cd publish/cli/linux-x64
+./filebridge --help
+```
+
+独立包包含 .NET 与 ASP.NET Core 运行时，无需另装 .NET；请保留完整发布目录。上述目标用于 glibc Linux，Alpine/musl 需另行构建并验证。也可直接使用 `dotnet run --project FileBridge.Cli -- <命令参数>`，不会启动桌面 UI。
+
+包内提供可执行的快捷安装脚本。在完整解压目录放到固定位置后运行：
+
+```sh
+# 以已下载的 x64 包为例；ARM64 使用对应架构的文件名
+tar -xzf FileBridge-cli-linux-x64-2.5.12.tar.gz
+cd FileBridge-cli-linux-x64-2.5.12
+./install
+# 新开一个终端即可直接使用；当前终端可先执行：
+export PATH="$HOME/.local/bin:$PATH"
+filebridge receive
+```
+
+无需 sudo。脚本建立 `~/.local/bin/filebridge` 软链接，并向 Bash 的 `~/.bashrc`、Zsh 的 `~/.zshrc` 或 POSIX shell 的 `~/.profile` 添加 PATH 配置。可重复执行，不重复添加同一配置，也不会覆盖已有的普通文件。请保留完整解压目录，移动后需重新运行安装脚本。
+
+```sh
+# 接收端：地址和目录均可省略，默认保存到当前工作目录
+./filebridge receive
+# 可选：手动指定 Linux 本机可被对方访问的具体 IP 和端口
+./filebridge receive --address 192.168.1.20 --port 8787
+# 需要其他保存位置时显式指定
+./filebridge receive --address 192.168.1.20 --directory /data/incoming
+
+# 发送端：粘贴 CLI 或桌面接收端生成的连接码，可指定多个文件/目录
+./filebridge send --code 'fb3_完整连接码' --parallel 4 /data/file.zip /data/photos
+
+# 避免连接码出现在进程参数中，从标准输入读取
+./filebridge send --code - /data/file.zip
+
+# 反向接收：使用原接收方（现提供文件的一方）的连接码，默认保存到当前目录
+./filebridge receive --code 'fb3_对端完整连接码'
+# 可指定目录和并发上限，也支持 --code - 从标准输入读取
+./filebridge receive --code 'fb3_对端完整连接码' --directory ./received --parallel 4
+```
+
+接收端 stdout 只输出一行连接码，进度和错误写入 stderr；可将连接码交给桌面版「发送文件」页。桌面版接收时，将其连接码用于 CLI `send` 即可。不要公开连接码或凭据文件。
+
+反向接收时，对端桌面版需保持接收服务运行，在「发送文件」页选择文件并点击「反向发送」。CLI 会主动连接该服务；若对端尚未准备则持续等待，无需本机监听端口或生成连接码。当前批次全部接收并校验后退出，下一批需重新运行命令。Ctrl+C / SIGTERM 可停止等待或下载，保留已校验断点；同一目录重新连接即可续传。反向模式不使用 `--address`、`--port` 或 `--config`，普通监听接收不使用 `--parallel`。
+
+接收配置默认位于当前用户本地应用数据目录的 `FileBridge/cli/connections.json`（Linux 通常为 `~/.local/share/FileBridge/cli/connections.json`），独立于桌面版。以后运行 `./filebridge receive` 会恢复地址、实际端口和接收身份；每次未指定 `--directory` 时，文件都保存到启动命令时的当前工作目录，不使用配置中旧的保存目录。续传时需在原接收目录启动，或用 `--directory` 指定原目录。同一配置仅允许一个接收进程，端口被占用会报错；`--port 0` 可选择并保存空闲端口。需要多个接收实例时，分别使用不同目录下的 `--config /path/to/profile/connections.json`。不指定地址时优先恢复保存地址，再自动选择 Tailscale / 局域网 IP；选到回环地址时仅能本机连接。
+
+Ctrl+C 或 SIGTERM 安全停止，保留接收目录中的 `.filebridge-parts`。重启接收端、重新执行相同发送命令后，会校验断点并续传；可恢复的网络错误会自动重试。请保留接收配置和原始源文件。需要撤销旧连接码时，先停止接收，再移除对应配置文件并重新启动；原断点仍保留。
+
+退出码：`0` 发送成功或接收服务正常停止；`1` 传输、凭据或启动错误；`2` 参数错误；`130` 发送被中断。
+
+仅依赖 CLI/Core 的无界面集成测试：
+
+```sh
+dotnet run --project FileBridge.Cli.Tests -c Release
+```
+
 ### 从当前 main 源码构建
 
 使用 C# / .NET 10、ASP.NET Core Kestrel 和 Avalonia 12.1.4。
@@ -142,7 +213,7 @@ If FileBridge is useful to you, you can leave an optional tip through [Stripe](h
 
 ### Requirements
 
-The downloads are **framework-dependent** and do not include .NET. Install both the **.NET 10 Runtime** and **ASP.NET Core 10 Runtime**, matching your system architecture. A matching .NET 10 SDK also provides both. The .NET Desktop Runtime alone is not sufficient.
+The Windows/macOS desktop downloads are **framework-dependent** and do not include .NET; Linux CLI packages are self-contained and include their runtime. For Desktop, install both the **.NET 10 Runtime** and **ASP.NET Core 10 Runtime**, matching your system architecture. A matching .NET 10 SDK also provides both. The .NET Desktop Runtime alone is not sufficient.
 
 Download them from the [official .NET 10 download page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
 
@@ -198,6 +269,40 @@ Pause and resume keep the verified contiguous prefix in `.filebridge-parts`. New
 - Do not modify source or partial files during a transfer. Files are sent sequentially; parallelism applies to chunks within a file and does not guarantee faster transfers on every network.
 - The current packages are not notarized with Apple Developer ID or signed with Windows Authenticode.
 
+### Linux CLI
+
+The headless CLI uses the same Core implementation and `fb2_` / `fb3_` codes as Desktop. It supports ordinary file/directory sending and receiving, outgoing-only reverse receiving, verified resume, parallel chunks and transient network retries. CLI reverse offering and receiver-side Funnel management are not included. Peers must be reachable over LAN, Tailscale or another network.
+
+With the .NET 10 SDK, publish a self-contained glibc Linux build; use `linux-arm64` instead for ARM64:
+
+```sh
+dotnet publish FileBridge.Cli -c Release -r linux-x64 --self-contained true -o publish/cli/linux-x64
+cd publish/cli/linux-x64
+# Address and directory are optional; receive into the current working directory:
+./filebridge receive
+# Optional address/port override; use --directory PATH to change the destination:
+./filebridge receive --address 192.168.1.20 --port 8787
+./filebridge send --code 'fb3_complete-code' --parallel 4 /data/file.zip /data/photos
+# Read the code from stdin instead of exposing it in process arguments:
+./filebridge send --code - /data/file.zip
+# Reverse receive using the original receiver's code (now the file provider):
+./filebridge receive --code 'fb3_peer-code' --directory ./received
+```
+
+Keep the complete publish directory. Self-contained builds include .NET/ASP.NET Core; Alpine/musl requires a separate build and validation. `dotnet run --project FileBridge.Cli -- <arguments>` also works with the SDK and never launches a window.
+
+For a global command for the current user, put the complete extracted directory in a stable location and run `./install`. No sudo is needed. The script creates `~/.local/bin/filebridge` as a symlink and adds PATH configuration to `~/.bashrc`, `~/.zshrc` or `~/.profile`, depending on the shell. Repeated execution does not duplicate that entry, and existing regular files are not overwritten. Open a new terminal, or run `export PATH="$HOME/.local/bin:$PATH"` in the current shell. Keep the complete extracted directory; rerun installation after moving it.
+
+The receiver prints only its connection code to stdout, with status/errors on stderr. Paste that code into Desktop's sender, or pass a Desktop receiver's code to CLI `send`. Keep codes and credential files private. Use `--help` for options.
+
+With `receive --code CODE`, the peer's Desktop receiver must stay running; select files there and click **Reverse send**. The CLI waits until an offer is available, opens no local listener and emits no invitation. It exits after receiving and verifying one batch. `--directory` defaults to the current directory, `--parallel 1..10` optionally caps download concurrency, and `--code -` reads from stdin. Ctrl+C / SIGTERM preserves verified partial data for resuming in the same directory. Reverse receive rejects listener-only `--address`, `--port` and `--config` options.
+
+Receiver settings and identity are saved separately from Desktop under the user's local application data directory, `FileBridge/cli/connections.json` (usually `~/.local/share/FileBridge/cli/connections.json` on Linux). Subsequent `./filebridge receive` restores the saved address, port and code. Without `--directory`, every start receives into the process's current working directory, ignoring any previously saved destination. To resume, start in the original destination or explicitly select it with `--directory`. One receiver can hold a profile at a time; occupied ports fail rather than silently changing the code. `--port 0` allocates and saves a free port. Multiple receivers need `--config` files in separate profile directories. Address discovery prefers Tailscale/LAN; a loopback address only allows local connections.
+
+Ctrl+C / SIGTERM stops safely. Keep `.filebridge-parts`, the receiver configuration and original source files; restart the receiver and rerun the same send command to resume verified data. To revoke a code, stop the receiver, remove its configuration file and restart; partial files remain. Exit codes: `0` success/receiver stopped, `1` transfer/startup error, `2` usage error, `130` sender interrupted.
+
+Run the independent headless integration checks with `dotnet run --project FileBridge.Cli.Tests -c Release`.
+
 ### Build the current main branch
 
 Requires the .NET 10 SDK. The app uses C#, ASP.NET Core Kestrel and Avalonia 12.1.4.
@@ -215,6 +320,8 @@ Optional: add `-- --ui` to the test command for native desktop regression checks
 ```text
 FileBridge.Core/       Transfer protocol, validation, sender and receiver
 FileBridge.Desktop/    Avalonia UI, localization and application assets
+FileBridge.Cli/        Headless send/receive console application (no Avalonia)
+FileBridge.Cli.Tests/  CLI process, resume and desktop Core interoperability checks
 FileBridge.Tests/      Protocol, transfer and desktop regression checks
 ThirdPartyNotices/     Third-party library notices
 ```

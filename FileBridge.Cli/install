@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+if [ "$(uname -s)" != Linux ]; then
+    printf '%s\n' 'This installer is for the Linux FileBridge package.' >&2
+    exit 1
+fi
+: "${HOME:?HOME must be set to install FileBridge.}"
+filebridge_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+if [ ! -x "$filebridge_dir/filebridge" ] || [ ! -f "$filebridge_dir/filebridge.dll" ]; then
+    printf '%s\n' 'Keep install alongside filebridge and all published runtime files.' >&2
+    exit 1
+fi
+# Verify architecture and runtime dependencies before changing the user's configuration.
+"$filebridge_dir/filebridge" --help >/dev/null
+
+filebridge_bin="$HOME/.local/bin"
+filebridge_link="$filebridge_bin/filebridge"
+if [ -e "$filebridge_link" ] && [ ! -L "$filebridge_link" ]; then
+    printf 'Cannot replace existing file or directory: %s\n' "$filebridge_link" >&2
+    exit 1
+fi
+
+filebridge_shell=${SHELL:-sh}
+case "${filebridge_shell##*/}" in
+    bash) filebridge_profile="$HOME/.bashrc" ;;
+    zsh) filebridge_profile="$HOME/.zshrc" ;;
+    sh|dash|ksh) filebridge_profile="$HOME/.profile" ;;
+    *) printf '%s\n' 'Automatic PATH setup supports Bash, Zsh and POSIX shells. Configure PATH manually for your shell.' >&2; exit 1 ;;
+esac
+filebridge_path_line='export PATH="$HOME/.local/bin:$PATH"'
+mkdir -p "$filebridge_bin"
+touch "$filebridge_profile"
+if ! grep -Fqx "$filebridge_path_line" "$filebridge_profile"; then
+    printf '\n%s\n' "$filebridge_path_line" >>"$filebridge_profile"
+fi
+ln -sfn "$filebridge_dir/filebridge" "$filebridge_link"
+
+printf 'Installed command: %s\nPATH configuration: %s\n' "$filebridge_link" "$filebridge_profile"
+printf '%s\n' 'Keep this complete extracted directory in place.' 'Open a new terminal, or run this in your current shell:'
+printf '  %s\n' "$filebridge_path_line"
+printf '%s\n' 'Then run: filebridge receive'
